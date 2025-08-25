@@ -1,5 +1,6 @@
 import os, subprocess,yaml,requests,time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 DEBUG=True
 WAIT_TIME=15
@@ -11,6 +12,7 @@ HTTP_HEADERS = {
      "cache-control": "no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
      "accept": "application/json"
 }
+TZ = ZoneInfo("America/Los_Angeles")
 
 def get_serial():
     strSerial = "/proc/device-tree/serial-number"
@@ -84,11 +86,11 @@ def get_flight_detail(flight_index):
 
 def show_flight(flight_info):
     if DEBUG:
-        print(datetime.now(),flight_info)
+        print(datetime.now(TZ),flight_info)
 
 def clear_flight():
     if DEBUG:
-        print(datetime.now(),"Clear")
+        print(datetime.now(TZ),"Clear")
 
 def main():
     print("Unique serial:",get_serial())
