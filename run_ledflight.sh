@@ -1,4 +1,5 @@
 #!/usr/bin/bash
 source ledflight/bin/activate
-python -u led_flight.py &> log
+nohup python -u led_flight.py &> log
+echo "pid: $!" >> log
 deactivate
