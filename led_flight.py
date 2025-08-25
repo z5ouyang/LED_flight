@@ -80,7 +80,7 @@ def get_flight_detail(flight_index):
         }
     except:
         if DEBUG:
-            print("Cannot get flight details from url: "+FLIGHT_LONG_DETAILS_HEAD+flight_number)
+            print("Cannot get flight details from url: "+FLIGHT_LONG_DETAILS_HEAD+flight_index)
         return None
     return flight_details
 
