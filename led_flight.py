@@ -43,7 +43,7 @@ def get_config():
             config=yaml.safe_load(f)
     return config
 
-def get_flights(geoloc):
+def get_flights(geoloc,altitude):
     url = FLIGHT_SEARCH_HEAD+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
     flight_index=None
     try:
@@ -54,7 +54,7 @@ def get_flights(geoloc):
         return None
     if len(flight)>2:
         for k,v in flight.items():
-            if isinstance(v,list) and len(v)>13:
+            if isinstance(v,list) and len(v)>13 and v[4]>altitude[0] and v[4]<altitude[1]:
                 flight_index = k
                 break
     return flight_index
@@ -66,6 +66,11 @@ def get_dict_value(d,keys):
         return d
     return get_dict_value(d.get(keys[0]),keys[1:])
 
+def get_est_arrival(eta):
+    if eta=='Unknown':
+        return 5
+    return max(5,int(eta-time.time()-50))
+
 def get_flight_detail(flight_index):
     flight_details=None
     try:
@@ -76,7 +81,8 @@ def get_flight_detail(flight_index):
             'airports_short': get_dict_value(flight,['airport','origin','code','iata']) +" - " + get_dict_value(flight,['airport','destination','code','iata']),
             'airports_long': get_dict_value(flight,['airport','origin','position','region','city']) +" - " + get_dict_value(flight,['airport','destination','position','region','city']),
             'aircraft_code': get_dict_value(flight,['aircraft','model','code']),
-            'aircraft_model': get_dict_value(flight,['aircraft','model','text'])
+            'aircraft_model': get_dict_value(flight,['aircraft','model','text']),
+            'eta': get_dict_value(flight,['time','estimated','arrival'])
         }
     except:
         if DEBUG:
@@ -98,7 +104,7 @@ def main():
     findex_old=None
     wait_time = WAIT_TIME
     while True:
-        findex = get_flights(config['geo_loc'])
+        findex = get_flights(config['geo_loc'],config['altitude'])
         if findex!=findex_old:
             findex_old = findex
             if findex is None:
@@ -108,7 +114,7 @@ def main():
                 finfo = get_flight_detail(findex)
                 if finfo is not None:                    
                     show_flight(finfo)
-                    wait_time=5
+                    wait_time=get_est_arrival(finfo['eta'])
         time.sleep(wait_time)
 
 if __name__ == "__main__":
