@@ -5,7 +5,7 @@ from modbus_relay_class import modbus_relay as mr
 REPLAY_STWICH = mr('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001K6BE-if00-port0')
 
 
-VERBOSE_LEVEL=2 #0: no print out; 1: important; 2: everything
+VERBOSE_LEVEL=1 #0: no print out; 1: important; 2: everything
 WAIT_TIME=15
 FLIGHT_SEARCH_HEAD="https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds="
 FLIGHT_SEARCH_TAIL="&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1&limit=1"
