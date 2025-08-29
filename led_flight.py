@@ -1,4 +1,4 @@
-import os, subprocess,yaml,requests,time
+import os, subprocess,yaml,requests,time,random
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from modbus_relay_class import modbus_relay as mr
