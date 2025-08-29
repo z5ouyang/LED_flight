@@ -1,8 +1,11 @@
 import os, subprocess,yaml,requests,time
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from modbus_relay_class import modbus_relay as mr
+REPLAY_STWICH = mr('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001K6BE-if00-port0')
 
-VERBOSE_LEVEL=1 #0: no print out; 1: important; 2: everything
+
+VERBOSE_LEVEL=2 #0: no print out; 1: important; 2: everything
 WAIT_TIME=15
 FLIGHT_SEARCH_HEAD="https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds="
 FLIGHT_SEARCH_TAIL="&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1&limit=1"
@@ -13,6 +16,8 @@ HTTP_HEADERS = {
      "accept": "application/json"
 }
 TZ = ZoneInfo("America/Los_Angeles")
+
+
 
 def get_serial():
     strSerial = "/proc/device-tree/serial-number"
@@ -98,12 +103,15 @@ def get_flight_detail(flight_index):
     return flight_details
 
 def show_flight(flight_info):
+    random.sample(range(8),1)
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),flight_info)
+    REPLAY_STWICH.set_one_open(random.sample(range(8),1)[0])
 
 def clear_flight():
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),"Clear")
+    REPLAY_STWICH.set_all_close()
 
 def main():
     print("Unique serial:",get_serial())
