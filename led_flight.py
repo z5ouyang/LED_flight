@@ -106,12 +106,14 @@ def show_flight(flight_info):
     random.sample(range(8),1)
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),flight_info)
-    REPLAY_STWICH.set_one_open(random.sample(range(8),1)[0])
+    if REPLAY_STWICH.check_init():
+        REPLAY_STWICH.set_one_open(random.sample(range(8),1)[0])
 
 def clear_flight():
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),"Clear")
-    REPLAY_STWICH.set_all_close()
+    if REPLAY_STWICH.check_init():
+        REPLAY_STWICH.set_all_close()
 
 def main():
     print("Unique serial:",get_serial())
