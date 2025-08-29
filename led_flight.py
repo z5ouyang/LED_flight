@@ -2,8 +2,12 @@ import os, subprocess,yaml,requests,time,random
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from modbus_relay_class import modbus_relay as mr
-REPLAY_STWICH = mr('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001K6BE-if00-port0')
 
+REPLAY_STWICH=None
+try: 
+    REPLAY_STWICH = mr('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001K6BE-if00-port0')
+except:
+    pass
 
 VERBOSE_LEVEL=1 #0: no print out; 1: important; 2: everything
 WAIT_TIME=15
@@ -106,13 +110,13 @@ def show_flight(flight_info):
     random.sample(range(8),1)
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),flight_info)
-    if REPLAY_STWICH.check_init():
+    if REPLAY_STWICH is not None and REPLAY_STWICH.check_init():
         REPLAY_STWICH.set_one_open(random.sample(range(8),1)[0])
 
 def clear_flight():
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),"Clear")
-    if REPLAY_STWICH.check_init():
+    if REPLAY_STWICH is not None and REPLAY_STWICH.check_init():
         REPLAY_STWICH.set_all_close()
 
 def main():
