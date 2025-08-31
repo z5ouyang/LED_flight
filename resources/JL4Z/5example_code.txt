@@ -1,0 +1,107 @@
+#include "reg51.h"
+#include "intrins.h"
+#include "absacc.h"
+#define BAUD 0xFE80 //11.0592M    设置波特率9600 
+#define u8 BYTE 
+#define u16 WORD
+#define u32 WORD
+ 
+sfr AUXR = 0x8E;
+sfr P3M1 = 0xB1;
+sfr P3M0 = 0xB2;
+ 
+sbit RXB = P3^0;  //test  //串口接收
+sbit TXB = P3^1;  //test  //串口发送
+ 
+typedef bit BOOL;
+typedef unsigned char BYTE;
+typedef unsigned int WORD;
+ 
+sfr TTT = 0xB2;
+sfr CLKK = 0xBB;
+ 
+BYTE TBUF,RBUF;
+BYTE TDAT,RDAT;
+BYTE TCNT,RCNT;
+BYTE TBIT,RBIT;
+BOOL TING,RING;
+BOOL TEND,REND;
+ 
+void UART_INIT();
+void UART_SEND(BYTE dat);
+void Delay(BYTE n);
+ 
+BYTE sendBuf[56] ={0xAA,0xA5,0x30,0x00,0x01,0x01,0x12,0x34,0xB0,0xA1,0x10,0x03,0x01,0x00,0x00,0x00,
+ 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0xC8,0x00,0x00,0x00,
+ 0x00,0x00,0x00,0x00,0x00,0x00,0x14,0x00,0xFF,0xFF,0x08,0x00,0xBB,0xB6,0xD3,0xAD,
+ 0x31,0x32,0x33,0x34,0x00,0x00,0x5A,0x55};  //4.0字库协议格式指令的16进制字符串，数组格式，其中有效数据内容为"欢迎1234"的GB2312和ASCII编码
+ 
+void udelay(u32 n) //1微妙（us）延时函数
+{
+ while(n--);
+}
+ 
+void mdelay(u32 n)  //1毫秒（ms）延时函数
+{
+ while(n--) udelay(1000);
+}
+  
+void UART_INIT()  //串口初始化
+{
+ TING=0;
+ RING=0;
+ TEND=1;
+ REND=0;
+ TCNT=0;
+ RCNT=0; 
+}
+ 
+void UART_SEND(BYTE dat) //发送一个字节数据
+{
+ while(!TEND);
+ TEND=0;
+ TBUF=dat;
+ TING=1;
+}
+ 
+void serial_puts(const char *s)    
+{
+ while (*s)
+ {
+    UART_SEND (*s++);
+ }
+}
+ 
+void serial_send(const char *s, u8 cnt)   //发送字符串
+{
+ u8 i = 0;
+ while(i < cnt) 
+ {
+    UART_SEND (*(s+i));
+ i++;
+ }
+}
+ 
+void main()
+{
+ TMOD=0x00; //设置定时/计数器0为工作方式0（16位自动重装）
+ AUXR=0x80; //设置定时器0为1T模式（即不分频）
+ TL0=BAUD; //装入初值
+ TH0=BAUD>>8;
+ TR0=1; //打开定时器
+ ET0=1; //开定时器0中断
+ PT0=1; //定时器0设置为高优先级中断
+ EA=1; //开总中断
+ UART_INIT(); //串口初始化
+ CLKK = 0x8A;
+ P3M1 = 0x3C;
+ P3M0 &= 0xC3;//将P3.2-P3.5四个端口配置成输入端口。
+ 
+//以上为系统初始化
+ 
+ serial_puts("\r\nHello world, Wait for card start...");
+ mdelay(4000);  //开始时延时4秒，等待字库卡启动
+ 
+ serial_send(sendBuf,55); // 按4.0字库卡协议格式发送指令,LED屏上对应显示"欢迎1234"
+ 
+}
