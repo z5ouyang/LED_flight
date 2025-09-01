@@ -6,6 +6,8 @@ from modbus_relay_class import modbus_relay as mr
 REPLAY_STWICH=None
 try: 
     REPLAY_STWICH = mr('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001K6BE-if00-port0')
+    if not REPLAY_STWICH.check_init():
+        REPLAY_STWICH=None
 except:
     pass
 
