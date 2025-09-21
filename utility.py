@@ -1,0 +1,97 @@
+import json,traceback,gc,time,math
+
+WAIT_TIME=15
+ALTITUDE_TIME=5
+WAIT_TIME_MAX=75
+FLIGHT_SEARCH_HEAD="https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds="
+FLIGHT_SEARCH_TAIL="&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1&limit=1"
+FLIGHT_LONG_DETAILS_HEAD="https://data-live.flightradar24.com/clickhandler/?flight="
+HTTP_HEADERS = {
+     "User-Agent": "Mozilla/5.0",
+     "cache-control": "no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
+     "accept": "application/json"
+}
+
+def get_config():
+    with open('private.json') as f:
+        config = json.load(f)
+    return config
+
+def bool_between(v,r):
+    if r is None:
+        return True
+    return (v>r[0] and v<r[1])
+
+def get_request_response(requests,url,DEBUG_VERBOSE=False):
+    try:       
+        response = requests.get(url=url,headers=HTTP_HEADERS)
+        response_json = response.json()
+        response.close()
+        gc.collect()
+    except Exception as e:
+        if DEBUG_VERBOSE:
+            traceback.print_exception(e)
+        return None
+    return response_json
+
+def get_distance(center,loc):
+    if center is None:
+        return 1
+    return math.sqrt((center[0] - loc[0])**2 + (center[1] - loc[1])**2)
+
+def get_flights(requests,geoloc,altitude=None,heading=None,center_geoloc=None,DEBUG_VERBOSE=False):
+    url = FLIGHT_SEARCH_HEAD+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
+    flight=get_request_response(requests,url,DEBUG_VERBOSE)
+    if DEBUG_VERBOSE:
+        print(flight)
+    flight_dist={}
+    if len(flight)>2:
+        #{'0':'ICAO 24-bit aircraft address (hex)', '1':'Latitude', '2':'Longitude', '3':'Aircraft heading (degrees)','4':'Altitude (feet)',
+        #    '5':'Ground speed (knots)','6':'Vertical speed (feet/min) — empty or unknown','7':'Radar source or feed ID','8':'Aircraft type (Boeing 737 MAX 9)',
+        #    '9':'Registration number','10':'Timestamp (Unix epoch)','11':'Departure airport (San Francisco Intl)','12':'Arrival airport (San Diego Intl)',
+        #    '13':'Flight number','14':'Possibly on-ground status (0 = airborne)','15':'Vertical speed (feet/min)','16':'Callsign',
+        #    '17':'Possibly squawk code or status flag','18':'Airline ICAO code (United Airlines)']
+        for k,v in flight.items():
+            if isinstance(v,list) and len(v)>13 and bool_between(v[4],altitude) and bool_between(v[3],heading):
+               flight_dist[k] = get_distance(center_geoloc,v[1:3])
+    flight_index = None if len(flight_dist)==0 else min(flight_dist, key=flight_dist.get)
+    return flight_index,len(flight)>0 # return a flag meaning the requests were successful
+
+def get_dict_value(d,keys):
+    if d is None:
+        return 'Unknown'
+    if len(keys)==0:
+        return d
+    return get_dict_value(d.get(keys[0]),keys[1:])
+
+def get_est_arrival(eta):
+    if eta=='Unknown':
+        return 5
+    return min(WAIT_TIME_MAX,max(5,int(eta-time.time()-50)))
+
+def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
+    if DEBUG_VERBOSE:
+        print("flight_index: ",flight_index)
+    flight_details=None
+    flight=get_request_response(requests,FLIGHT_LONG_DETAILS_HEAD+flight_index,DEBUG_VERBOSE)
+    if flight is not None:
+            flight_details={
+                'flight_index':flight_index,
+                'flight_number': get_dict_value(flight,['identification','number','default']),
+                'airline_name': get_dict_value(flight,['airline','name']),
+                'airports_short': get_dict_value(flight,['airport','origin','code','iata']) +"-" + get_dict_value(flight,['airport','destination','code','iata']),
+                'airports_long': get_dict_value(flight,['airport','origin','position','region','city']) +"-" + get_dict_value(flight,['airport','destination','position','region','city']),
+                'aircraft_code': get_dict_value(flight,['aircraft','model','code']),
+                'aircraft_model': get_dict_value(flight,['aircraft','model','text']),
+                'status': get_dict_value(flight,['status','text']),
+                'eta': get_dict_value(flight,['time','estimated','arrival'])
+            }
+    return flight_details
+
+def get_altitude(requests,geoloc,flight_index,DEBUG_VERBOSE=False):
+    url = FLIGHT_SEARCH_HEAD+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
+    flight=get_request_response(requests,url,DEBUG_VERBOSE)
+    if flight_index in flight.keys():
+        return flight[flight_index][4]
+    else:
+        return None
