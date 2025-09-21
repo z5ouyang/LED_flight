@@ -1,15 +1,6 @@
-import os, subprocess,yaml,requests,time,random
+import os, subprocess,yaml,requests,time,random,json,traceback
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from modbus_relay_class import modbus_relay as mr
-
-REPLAY_STWICH=None
-try: 
-    REPLAY_STWICH = mr('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001K6BE-if00-port0')
-    if not REPLAY_STWICH.check_init():
-        REPLAY_STWICH=None
-except:
-    pass
 
 VERBOSE_LEVEL=1 #0: no print out; 1: important; 2: everything
 WAIT_TIME=15
@@ -22,8 +13,6 @@ HTTP_HEADERS = {
      "accept": "application/json"
 }
 TZ = ZoneInfo("America/Los_Angeles")
-
-
 
 def get_serial():
     strSerial = "/proc/device-tree/serial-number"
@@ -47,11 +36,8 @@ def get_serial():
     return "0000000000000000"
 
 def get_config():
-    strConfig = 'private.yml'
-    config=None
-    if os.path.isfile(strConfig):
-        with open(strConfig,'r') as f:
-            config=yaml.safe_load(f)
+    with open('private.json') as f:
+        config = json.load(f)
     return config
 
 def bool_between(v,r):
@@ -59,16 +45,29 @@ def bool_between(v,r):
         return True
     return (v>r[0] and v<r[1])
 
+def get_request_response(url):
+    try:       
+        response = requests.get(url=url,headers=HTTP_HEADERS)
+        response_json = response.json()
+        response.close()
+    except Exception as e:
+        if VERBOSE_LEVEL>0:
+            traceback.print_exception(e)
+        return None
+    return response_json
+
 def get_flights(geoloc,altitude=None,heading=None):
     url = FLIGHT_SEARCH_HEAD+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
     flight_index=None
-    try:
-        flight=requests.get(url=url,headers=HTTP_HEADERS).json()
-    except:
-        if VERBOSE_LEVEL>0:
-            print("Cannot get flight number from url: %s"%url)
-        return None
+    flight=get_request_response(url)
+    if VERBOSE_LEVEL>1:
+        print(flight)
     if len(flight)>2:
+        #{'0':'ICAO 24-bit aircraft address (hex)', '1':'Latitude', '2':'Longitude', '3':'Aircraft heading (degrees)','4':'Altitude (feet)',
+        #    '5':'Ground speed (knots)','6':'Vertical speed (feet/min) — empty or unknown','7':'Radar source or feed ID','8':'Aircraft type (Boeing 737 MAX 9)',
+        #    '9':'Registration number','10':'Timestamp (Unix epoch)','11':'Departure airport (San Francisco Intl)','12':'Arrival airport (San Diego Intl)',
+        #    '13':'Flight number','14':'Possibly on-ground status (0 = airborne)','15':'Vertical speed (feet/min)','16':'Callsign',
+        #    '17':'Possibly squawk code or status flag','18':'Airline ICAO code (United Airlines)']
         for k,v in flight.items():
             if VERBOSE_LEVEL>1 and isinstance(v,list) and len(v)>13:
                 print("\t",v) 
@@ -91,8 +90,8 @@ def get_est_arrival(eta):
 
 def get_flight_detail(flight_index):
     flight_details=None
-    try:
-        flight=requests.get(url=FLIGHT_LONG_DETAILS_HEAD+flight_index,headers=HTTP_HEADERS).json()
+    flight=get_request_response(url=FLIGHT_LONG_DETAILS_HEAD+flight_index)
+    if flight is not None:
         flight_details={
             'flight_number': get_dict_value(flight,['identification','number','default']),
             'airline_name': get_dict_value(flight,['airline','name']),
@@ -102,24 +101,16 @@ def get_flight_detail(flight_index):
             'aircraft_model': get_dict_value(flight,['aircraft','model','text']),
             'eta': get_dict_value(flight,['time','estimated','arrival'])
         }
-    except:
-        if VERBOSE_LEVEL>0:
-            print("Cannot get flight details from url: "+FLIGHT_LONG_DETAILS_HEAD+flight_index)
-        return None
     return flight_details
 
 def show_flight(flight_info):
     random.sample(range(8),1)
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),flight_info)
-    if REPLAY_STWICH is not None and REPLAY_STWICH.check_init():
-        REPLAY_STWICH.set_one_open(random.sample(range(8),1)[0])
 
 def clear_flight():
     if VERBOSE_LEVEL>0:
         print(datetime.now(TZ),"Clear")
-    if REPLAY_STWICH is not None and REPLAY_STWICH.check_init():
-        REPLAY_STWICH.set_all_close()
 
 def main():
     print("Unique serial:",get_serial())
