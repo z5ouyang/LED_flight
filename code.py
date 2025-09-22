@@ -55,6 +55,168 @@ def get_plane_Bmp(matrixportal):
     planeG.append(planeTg)
     return planeG
 
+def get_plane_0():
+     return [
+        "000001100000",
+        "000001100000",
+        "000001100000",
+        "000011110000",
+        "000111111000",
+        "001111111100",
+        "011111111110",
+        "111001100111",
+        "000001100000",
+        "000001100000",
+        "000011110000",
+        "000010010000",
+    ]
+
+def get_plane_45():
+    return ['000000000000',
+            '000000000110',
+            '000000001110',
+            '011111111100',
+            '001111111000',
+            '000011111000',
+            '000011111000',
+            '000111111000',
+            '111110011000',
+            '001100011000',
+            '000100001000',
+            '000100000000']
+
+def get_plane_90():
+    return ["000100000000",
+            "000110000000",
+            "000111000000",
+            "000011100000",
+            "110011110000",
+            "011111111111",
+            "011111111111",
+            "110011110000",
+            "000011100000",
+            "000111000000",
+            "000110000000",
+            "000100000000"]
+
+def get_plane_135():
+    return ["000100001000",
+            "000100011000",
+            "001100011000",
+            "111110111000",
+            "000111111000",
+            "000011111000",
+            "000111111000",
+            "011111111000",
+            "111111111100",
+            "000000001110",
+            "000000000110",
+            "000000000000"]
+
+def get_plane_180():
+    return ["000010010000",
+            "000011110000",
+            "000001100000",
+            "111001100111",
+            "011111111110",
+            "001111111100",
+            "000111111000",
+            "000011110000",
+            "000001100000",
+            "000001100000",
+            "000001100000",
+            "000001100000"]
+
+def get_plane_225():
+    return ["000100001000",
+            "000110001000",
+            "000110001100",
+            "000111011111",
+            "000111111000",
+            "000111110000",
+            "000111111000",
+            "000111111110",
+            "001111111111",
+            "011100000000",
+            "011000000000",
+            "000000000000"]
+
+def get_plane_270():
+    return ["000000001000",
+            "000000011000",
+            "000000111000",
+            "000001110000",
+            "000011110011",
+            "111111111110",
+            "111111111110",
+            "000011110011",
+            "000001110000",
+            "000000111000",
+            "000000011000",
+            "000000001000"]
+
+def get_plane_315():
+    return ["000000000000",
+            "011000000000",
+            "011100000000",
+            "001111111111",
+            "000111111110",
+            "000111111000",
+            "000111110000",
+            "000111111000",
+            "000111011111",
+            "000110001100",
+            "000110001000",
+            "000100001000"] 
+
+def get_plane_rotate(heading):
+    north = [
+        "000001100000",
+        "000001100000",
+        "000001100000",
+        "000001100000",
+        "000011110000",
+        "000111111000",
+        "001111111100",
+        "011111111110",
+        "111001100111",
+        "000001100000",
+        "000011110000",
+        "000010010000",
+    ]
+    new_image=['000000000000']*12
+    angle_rad = math.radians(heading)
+    cx=5.5
+    cy=5.5
+    for x in range(12):
+        for y in range(12):
+            dx = x - cx
+            dy = y - cy
+            x_new = min(11,max(0,round(cx + dx * math.cos(angle_rad) - dy * math.sin(angle_rad))))
+            y_new = min(11,max(0,round(cy + dx * math.sin(angle_rad) + dy * math.cos(angle_rad))))
+            new_image[y_new]= new_image[y_new][:x_new]+north[y][x]+new_image[y_new][(x_new+1):]
+    print('",\n"'.join(new_image))
+    return new_image
+
+def closest_heading(angle):
+    compass_points = [0, 45, 90, 135, 180, 225, 270, 315]
+    return min(compass_points, key=lambda x: abs((angle - x + 180) % 360 - 180))
+
+def get_plane_heading(heading):
+    palette = displayio.Palette(2)
+    palette[0] = 0x000000  # black (off)
+    palette[1] = PLANE_COLOUR  # white (on)
+    airplane_bmp = displayio.Bitmap(12, 12, 2)
+    icon_data = globals()['get_plane_'+str(closest_heading(heading))]()
+    for y, row in enumerate(icon_data):
+        for x, pixel in enumerate(row):
+            if pixel == "1":
+                airplane_bmp[x, y] = 1
+    tile_grid = displayio.TileGrid(airplane_bmp, pixel_shader=palette,x=51,y=19)
+    #g = displayio.Group()
+    #g.append(tile_grid)
+    return tile_grid
+
 def plane_animation(matrixportal,planeG):
     matrixportal.display.root_group = planeG
     for i in range(matrixportal.display.width+24,-12,-1):
@@ -88,15 +250,13 @@ def display_flight(flight_info,matrixportal):
         g[i].text=labels_s[i]
         g[i].x=1
 
-def update_altitude(geoloc,flight_info,matrixportal):
-    if flight_info is None:
-        return None
-    alt = ut.get_altitude(REQUESTS,geoloc,flight_info['flight_index'],DEBUG_VERBOSE=DEBUG_VERBOSE)
-    if alt is not None:
-        labels_s = [flight_info['flight_number'],flight_info['airports_short'],str(alt)+'ft']
-        g = get_text(labels_s)
-        matrixportal.display.root_group = g
-    return alt
+def update_flight(flight_short,flight_info,matrixportal):
+    #flight = ut.get_flight_short(REQUESTS,geo_loc,flight_info['flight_index'],DEBUG_VERBOSE=DEBUG_VERBOSE)
+    #if flight is not None:
+    labels_s = [flight_info['flight_number'],flight_info['airports_short'],str(flight_short['altitude'])+' ft']
+    g = get_text(labels_s)
+    g.append(get_plane_heading(int(flight_short['heading'])))
+    matrixportal.display.root_group = g
 
 def show_flight(flight_info,matrixportal,planeG):
     if DEBUG_VERBOSE:
@@ -105,16 +265,15 @@ def show_flight(flight_info,matrixportal,planeG):
     plane_animation(matrixportal,planeG)
     display_flight(flight_info,matrixportal)
 
-def clear_flight(matrixportal,findex):
+def clear_flight(geo_loc,flight_index,matrixportal):
     if DEBUG_VERBOSE:
         now = time.localtime()
         print(f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","Clear")
-    finfo = ut.get_flight_detail(REQUESTS,findex,DEBUG_VERBOSE=DEBUG_VERBOSE)
-    if finfo['status'].startswith('Landed'):
-        labels = finfo['status'].split(' ')
-        labels.insert(1,'at')
+    flight = ut.get_flight_short(REQUESTS,geo_loc,flight_index,DEBUG_VERBOSE=DEBUG_VERBOSE)
+    if flight is not None and flight['altitude']<100:
+        labels = ["Landed","",str(flight["speed"])+' kts']
     else:
-        labels=['Out','of','Frame']    
+        labels=['Out of','Monitor','Boundary']
     matrixportal.display.root_group = get_text(labels)
     time.sleep(5)
     matrixportal.display.root_group = displayio.Group()
@@ -129,27 +288,25 @@ def main():
     mp = get_matrix_portal()
     plane = get_plane_Bmp(mp)
     findex_old=None
-    alt=None
     gc.collect()
     while True:
         wait_time = ut.WAIT_TIME
-        findex,req_success = ut.get_flights(REQUESTS,config['geo_loc'],config.get('altitude'),config.get('heading'),config.get('center_loc'),DEBUG_VERBOSE=DEBUG_VERBOSE)
+        findex,fshort,req_success = ut.get_flights(REQUESTS,config['geo_loc'],config.get('altitude'),config.get('heading'),
+            config.get('center_loc'),config.get('dest'),config.get('speed'),DEBUG_VERBOSE=DEBUG_VERBOSE)
         if req_success:
             w.feed()
         if findex!=findex_old:
             if findex is None:
-                clear_flight(mp,findex_old)
+                clear_flight(config['geo_loc'],findex_old,mp)
             else:
                 finfo = ut.get_flight_detail(REQUESTS,findex,DEBUG_VERBOSE=DEBUG_VERBOSE)
                 if finfo is not None:                    
                     show_flight(finfo,mp,plane)
-                    update_altitude(config['geo_loc'],finfo,mp)
-                    wait_time=ut.ALTITUDE_TIME
+                    wait_time=ut.UPDATE_TIME
             findex_old = findex
         elif findex is not None:
-            alt = update_altitude(config['geo_loc'],finfo,mp)
-            if alt is not None:
-                wait_time=ut.ALTITUDE_TIME
+            update_flight(fshort,finfo,mp)
+            wait_time=ut.UPDATE_TIME
         time.sleep(wait_time)
         gc.collect()
         if DEBUG_VERBOSE:
@@ -157,3 +314,4 @@ def main():
 
 main()
 #the Matrix Portal S3 running CircuitPython 9.x
+
