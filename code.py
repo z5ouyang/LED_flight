@@ -1,5 +1,6 @@
-import time, board, terminalio, json, displayio, framebufferio, rgbmatrix, gc, busio, neopixel, re, ssl, wifi, socketpool, rtc, adafruit_ntp
+import os, time, board, terminalio, json, displayio, framebufferio, rgbmatrix, gc, busio, neopixel, re, ssl, wifi, socketpool, rtc, adafruit_ntp,wifi,ipaddress
 import utility as ut
+import plane_icon as pi
 from random import randrange
 from adafruit_matrixportal.matrixportal import MatrixPortal
 from adafruit_portalbase.network import HttpError
@@ -11,14 +12,15 @@ from watchdog import WatchDogMode
 
 DEBUG_VERBOSE=False
 if not DEBUG_VERBOSE:
-    w.timeout=300 # timeout in seconds
+    w.timeout=60 # timeout in seconds
     w.mode = WatchDogMode.RESET
+
 FONT=terminalio.FONT
 # limited sockets so global:
 SOCKET = socketpool.SocketPool(wifi.radio)
 REQUESTS = adafruit_requests.Session(SOCKET, ssl.create_default_context())
 # Colours and timings
-TEXT_COLOR=[0x440844,0x0040B0,0xB08000]#;g = get_text(labels_s);matrixportal.display.root_group = g
+TEXT_COLOR=[0x440844,0x0040B0,0xFFBF00]#;g = get_text(labels_s);matrixportal.display.root_group = g
 PLANE_COLOUR=0x4B0082
 # Time in seconds to wait between scrolling one label and the next
 PAUSE_BETWEEN_LABEL_SCROLLING=2
@@ -29,14 +31,69 @@ TEXT_SPEED=0.04
 
 def get_matrix_portal():
     status_light = neopixel.NeoPixel(
-        board.NEOPIXEL, 1, brightness=0.2
+        board.NEOPIXEL, 1, brightness=0.1
     )
     # Top level matrixportal object
     matrixportal = MatrixPortal(
         rotation=0,
-        debug=False
+        debug=False,
+        bit_depth=6
     )
     return matrixportal
+
+def check_wifi(matrixportal):
+    ping_ip = ipaddress.IPv4Address("8.8.8.8")  # Google's DNS
+    tryN = 3
+    fwifi = False
+    labels = ["WIFI",os.getenv("CIRCUITPY_WIFI_SSID"),'FAILED']
+    while tryN>0:
+        ping = wifi.radio.ping(ip=ping_ip)
+        if ping:
+            fwifi=True
+            labels = ["Connected","to",os.getenv("CIRCUITPY_WIFI_SSID")]
+            break
+        tryN -=1
+    matrixportal.display.root_group = get_text(labels)
+    time.sleep(5)
+    return fwifi
+
+def update_sys_time(tz,matrixportal):#tz='America/Los_Angeles'
+    #not reliable: https://worldtimeapi.org/api/timezone/
+    labels = ["TIME ZONE","ERROR",'Use UTC']
+    offset = None
+    if tz is not None:
+        offset,tz_name = ut.get_time_zone_offset(REQUESTS,tz,DEBUG_VERBOSE)
+    if offset is None:
+        offset=0
+        tz_name='UTC'
+    else:
+        labels = ["TIME ZONE","",tz_name]
+    rtc.RTC().datetime = adafruit_ntp.NTP(SOCKET, tz_offset=offset).datetime
+    matrixportal.display.root_group = get_text(labels)
+    time.sleep(5)
+
+def display_date_time(time_within,matrixportal):
+    if time_within is None:
+        return
+    led_color = [0x996600]
+    now = time.localtime()
+    if time_within[0]<time_within[1]:
+        if time_within[0] <= now.tm_hour < time_within[1]:
+            led_color = [0x100800]
+    else:
+        if time_within[0] <= now.tm_hour or now.tm_hour < time_within[1]:
+            led_color = [0x100800]
+    month_names = ["","Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    weekday_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    labels = [month_names[now.tm_mon]+" "+str(now.tm_mday),"      "+weekday_names[now.tm_wday],f"{now.tm_hour:02}:{now.tm_min:02}"]
+    matrixportal.display.root_group = get_text(labels,led_color*3)
+
+def get_BMP(icon_data,BMP):
+    for y, row in enumerate(icon_data):
+        for x, pixel in enumerate(row):
+            if pixel == "1":
+                BMP[x, y] = 1
 
 def get_plane_Bmp(matrixportal):
     # Little plane to scroll across when we find a flight overhead
@@ -44,130 +101,12 @@ def get_plane_Bmp(matrixportal):
     planePalette = displayio.Palette(2)
     planePalette[1] = PLANE_COLOUR
     planePalette[0] = 0x000000
-    planeBmp[6,0]=planeBmp[6,1]=planeBmp[5,1]=planeBmp[4,2]=planeBmp[5,2]=planeBmp[6,2]=1
-    planeBmp[9,3]=planeBmp[5,3]=planeBmp[4,3]=planeBmp[3,3]=1
-    planeBmp[1,4]=planeBmp[2,4]=planeBmp[3,4]=planeBmp[4,4]=planeBmp[5,4]=planeBmp[6,4]=planeBmp[7,4]=planeBmp[8,4]=planeBmp[9,4]=1
-    planeBmp[1,5]=planeBmp[2,5]=planeBmp[3,5]=planeBmp[4,5]=planeBmp[5,5]=planeBmp[6,5]=planeBmp[7,5]=planeBmp[8,5]=planeBmp[9,5]=1
-    planeBmp[9,6]=planeBmp[5,6]=planeBmp[4,6]=planeBmp[3,6]=1
-    planeBmp[6,9]=planeBmp[6,8]=planeBmp[5,8]=planeBmp[4,7]=planeBmp[5,7]=planeBmp[6,7]=1
+    icon_data = pi.get_plane_horizontal()
+    get_BMP(pi.get_plane_horizontal(),planeBmp)
     planeTg= displayio.TileGrid(planeBmp, pixel_shader=planePalette)
     planeG=displayio.Group(x=matrixportal.display.width+12,y=10)
     planeG.append(planeTg)
     return planeG
-
-def get_plane_0():
-     return [
-        "000001100000",
-        "000001100000",
-        "000001100000",
-        "000011110000",
-        "000111111000",
-        "001111111100",
-        "011111111110",
-        "111001100111",
-        "000001100000",
-        "000001100000",
-        "000011110000",
-        "000010010000",
-    ]
-
-def get_plane_45():
-    return ['000000000000',
-            '000000000110',
-            '000000001110',
-            '011111111100',
-            '001111111000',
-            '000011111000',
-            '000011111000',
-            '000111111000',
-            '111110011000',
-            '001100011000',
-            '000100001000',
-            '000100000000']
-
-def get_plane_90():
-    return ["000100000000",
-            "000110000000",
-            "000111000000",
-            "000011100000",
-            "110011110000",
-            "011111111111",
-            "011111111111",
-            "110011110000",
-            "000011100000",
-            "000111000000",
-            "000110000000",
-            "000100000000"]
-
-def get_plane_135():
-    return ["000100001000",
-            "000100011000",
-            "001100011000",
-            "111110111000",
-            "000111111000",
-            "000011111000",
-            "000111111000",
-            "011111111000",
-            "111111111100",
-            "000000001110",
-            "000000000110",
-            "000000000000"]
-
-def get_plane_180():
-    return ["000010010000",
-            "000011110000",
-            "000001100000",
-            "111001100111",
-            "011111111110",
-            "001111111100",
-            "000111111000",
-            "000011110000",
-            "000001100000",
-            "000001100000",
-            "000001100000",
-            "000001100000"]
-
-def get_plane_225():
-    return ["000100001000",
-            "000110001000",
-            "000110001100",
-            "000111011111",
-            "000111111000",
-            "000111110000",
-            "000111111000",
-            "000111111110",
-            "001111111111",
-            "011100000000",
-            "011000000000",
-            "000000000000"]
-
-def get_plane_270():
-    return ["000000001000",
-            "000000011000",
-            "000000111000",
-            "000001110000",
-            "000011110011",
-            "111111111110",
-            "111111111110",
-            "000011110011",
-            "000001110000",
-            "000000111000",
-            "000000011000",
-            "000000001000"]
-
-def get_plane_315():
-    return ["000000000000",
-            "011000000000",
-            "011100000000",
-            "001111111111",
-            "000111111110",
-            "000111111000",
-            "000111110000",
-            "000111111000",
-            "000111011111",
-            "000110001100",
-            "000110001000",
-            "000100001000"] 
 
 def get_plane_rotate(heading):
     north = [
@@ -207,14 +146,8 @@ def get_plane_heading(heading):
     palette[0] = 0x000000  # black (off)
     palette[1] = PLANE_COLOUR  # white (on)
     airplane_bmp = displayio.Bitmap(12, 12, 2)
-    icon_data = globals()['get_plane_'+str(closest_heading(heading))]()
-    for y, row in enumerate(icon_data):
-        for x, pixel in enumerate(row):
-            if pixel == "1":
-                airplane_bmp[x, y] = 1
+    get_BMP(getattr(pi,'get_plane_'+str(closest_heading(heading)))(),airplane_bmp)
     tile_grid = displayio.TileGrid(airplane_bmp, pixel_shader=palette,x=51,y=19)
-    #g = displayio.Group()
-    #g.append(tile_grid)
     return tile_grid
 
 def plane_animation(matrixportal,planeG):
@@ -223,12 +156,14 @@ def plane_animation(matrixportal,planeG):
             planeG.x=i
             time.sleep(PLANE_SPEED)
 
-def get_text(label_s):
+def get_text(label_s,text_col=None):
     # We can fit three rows of text on a panel, so one label for each. We'll change their text as needed
+    if text_col is None:
+        text_col = TEXT_COLOR
     g = displayio.Group()
     for i in range(len(label_s)):
         g.append(adafruit_display_text.label.Label(
-            FONT,color=TEXT_COLOR[i],x=1,y=i*10+5,
+            FONT,color=text_col[i],x=1,y=i*10+5,
             text=label_s[i]))
     return g
 
@@ -250,12 +185,13 @@ def display_flight(flight_info,matrixportal):
         g[i].text=labels_s[i]
         g[i].x=1
 
-def update_flight(flight_short,flight_info,matrixportal):
-    #flight = ut.get_flight_short(REQUESTS,geo_loc,flight_info['flight_index'],DEBUG_VERBOSE=DEBUG_VERBOSE)
-    #if flight is not None:
+def update_flight(flight_short,flight_info,matrixportal,flip_east_west=None):
+    if flight_info is None:
+        return
     labels_s = [flight_info['flight_number'],flight_info['airports_short'],str(flight_short['altitude'])+' ft']
     g = get_text(labels_s)
-    g.append(get_plane_heading(int(flight_short['heading'])))
+    heading = (360 - int(flight_short['heading']))%360 if flip_east_west else int(flight_short['heading'])
+    g.append(get_plane_heading(heading))
     matrixportal.display.root_group = g
 
 def show_flight(flight_info,matrixportal,planeG):
@@ -265,29 +201,30 @@ def show_flight(flight_info,matrixportal,planeG):
     plane_animation(matrixportal,planeG)
     display_flight(flight_info,matrixportal)
 
-def clear_flight(geo_loc,flight_index,matrixportal):
+def clear_flight(flight_index,matrixportal):
     if DEBUG_VERBOSE:
         now = time.localtime()
         print(f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","Clear")
-    flight = ut.get_flight_short(REQUESTS,geo_loc,flight_index,DEBUG_VERBOSE=DEBUG_VERBOSE)
-    if flight is not None and flight['altitude']<100:
+    flight = ut.get_flight_short(REQUESTS,flight_index,DEBUG_VERBOSE=DEBUG_VERBOSE)
+    if flight is not None and flight['altitude']<ut.LANDING_ALTITUDE:
         labels = ["Landed","",str(flight["speed"])+' kts']
     else:
         labels=['Out of','Monitor','Boundary']
     matrixportal.display.root_group = get_text(labels)
     time.sleep(5)
     matrixportal.display.root_group = displayio.Group()
-
-def update_sys_UTC_time():
-    ntp = adafruit_ntp.NTP(SOCKET, tz_offset=0)  # UTC
-    rtc.RTC().datetime = ntp.datetime
+    #displayio.release_displays()
 
 def main():
-    update_sys_UTC_time()
-    config = ut.get_config()
     mp = get_matrix_portal()
+    if not check_wifi(mp):
+        return
+    config = ut.get_config()
+    update_sys_time(config.get('time_zone'),mp)
     plane = get_plane_Bmp(mp)
     findex_old=None
+    finfo=None
+    flight_followed=ut.MAX_FOLLOW_PLAN
     gc.collect()
     while True:
         wait_time = ut.WAIT_TIME
@@ -295,23 +232,40 @@ def main():
             config.get('center_loc'),config.get('dest'),config.get('speed'),DEBUG_VERBOSE=DEBUG_VERBOSE)
         if req_success:
             w.feed()
+        ## follow the previous plane when it moved outside the boundary but no new plane entered
+        if findex is None and findex_old is not None and flight_followed>0:
+            if DEBUG_VERBOSE:
+                print("=== Follow the previous plane which is out of boundary ===")
+                print(findex,":",findex_old,":",flight_followed)
+            fshort = ut.get_flight_short(REQUESTS,findex_old,DEBUG_VERBOSE=DEBUG_VERBOSE)
+            findex = findex_old
+            if fshort['altitude']<ut.LANDING_ALTITUDE:
+                flight_followed=0
+            flight_followed -=1
+        ##
         if findex!=findex_old:
             if findex is None:
-                clear_flight(config['geo_loc'],findex_old,mp)
+                clear_flight(findex_old,mp)
+                display_date_time(config.get("display_time_night"),mp)                
             else:
                 finfo = ut.get_flight_detail(REQUESTS,findex,DEBUG_VERBOSE=DEBUG_VERBOSE)
                 if finfo is not None:                    
                     show_flight(finfo,mp,plane)
                     wait_time=ut.UPDATE_TIME
             findex_old = findex
+            flight_followed=ut.MAX_FOLLOW_PLAN
         elif findex is not None:
-            update_flight(fshort,finfo,mp)
+            if DEBUG_VERBOSE:
+                print(findex,":",findex_old)
+            update_flight(fshort,finfo,mp,config.get('flip_east_west'))
             wait_time=ut.UPDATE_TIME
+        else:
+            display_date_time(config.get("display_time_night"),mp)
         time.sleep(wait_time)
         gc.collect()
         if DEBUG_VERBOSE:
             print("  Free:", gc.mem_free(), "bytes","  Allocated:", gc.mem_alloc(), "bytes")
 
 main()
+time.sleep(300)
 #the Matrix Portal S3 running CircuitPython 9.x
-
