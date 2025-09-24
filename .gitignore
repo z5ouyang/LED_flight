@@ -2,3 +2,5 @@ ledflight*
 *private*
 setting.toml
 log
+*DS_Store
+__pycache__/*

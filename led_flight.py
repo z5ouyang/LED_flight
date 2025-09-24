@@ -7,6 +7,27 @@ VERBOSE_LEVEL=1 #0: no print out; 1: important; 2: everything
 WAIT_TIME=15
 TZ = ZoneInfo("America/Los_Angeles")
 
+@staticmethod
+def calculate_modbus_crc(data):
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            if crc & 0x0001:
+                crc = (crc >> 1) ^ 0xA001
+            else:
+                crc >>= 1
+    return crc.to_bytes(2, 'little')
+## send data to modbus with return data #/dev/ttyUSB0
+def send_modbus(port,tx_data,return_size,baudrate=9600,CRC=False):
+    if CRC:
+        tx_data = tx_data + calculate_modbus_crc(tx_data)
+    ser = serial.Serial(port=port,baudrate=baudrate,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS,timeout=1)
+    a = ser.write(tx_data)
+    rx_data = ser.read(size=return_size)
+    ser.close()
+    return rx_data
+
 def get_serial():
     strSerial = "/proc/device-tree/serial-number"
     if os.path.isfile(strSerial):
@@ -27,6 +48,28 @@ def get_serial():
     #except Exception as e:
     #    return f"Error: {e}"
     return "0000000000000000"
+
+def 
+
+
+def check_wifi():
+    ping_ip = ipaddress.IPv4Address("8.8.8.8")  # Google's DNS
+    tryN = 3
+    fwifi = False
+    labels = ["WIFI",os.getenv("CIRCUITPY_WIFI_SSID"),'FAILED']
+    while tryN>0:
+        ping = wifi.radio.ping(ip=ping_ip)
+        if ping:
+            fwifi=True
+            labels = ["Connected","to",os.getenv("CIRCUITPY_WIFI_SSID")]
+            break
+        tryN -=1
+    matrixportal.display.root_group = get_text(labels)
+    time.sleep(5)
+    return fwifi
+
+
+
 
 def show_flight(flight_info):
     if VERBOSE_LEVEL>0:
