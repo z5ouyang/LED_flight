@@ -81,7 +81,7 @@ def check_brightness(night_time):
     if bNight and LED_CURR_BRIGHTNESS!=LED_NIGHT_BRIGHTNESS:
         LED_CURR_BRIGHTNESS=LED_NIGHT_BRIGHTNESS
         ml.set_brightness(LED_NIGHT_BRIGHTNESS)
-    elif not bNight and LED_CURR_BRIGHTNESS!=LED_DAY_BRIGHTNESS
+    elif not bNight and LED_CURR_BRIGHTNESS!=LED_DAY_BRIGHTNESS:
         LED_CURR_BRIGHTNESS=LED_DAY_BRIGHTNESS
         ml.set_brightness(LED_DAY_BRIGHTNESS)
 
