@@ -109,7 +109,7 @@ def plane_animation():
         ml.move_frame_left(max(0,W-w-i),0,w,H)
 
 def display_alt_sp(fInfo):
-    x=32
+    x=64
     heading = (360 - int(fInfo['heading']))%360 if FLIP_EAST_WEST else int(fInfo['heading'])
     img = getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))()
     w = len(img)
@@ -148,6 +148,8 @@ def init(config):
     try:
         ml.get_GID()
         ml.set_text_color('FF0')
+        ml.delete_programe(SHORT_CANVAS)
+        ml.delete_programe(LONG_CANVAS)
         ml.create_canvas(SHORT_CANVAS,0,0,64,16)
         ml.create_canvas(LONG_CANVAS,0,16,192,16)
         FLIP_EAST_WEST = False if config.get('flip_east_west') is None else config.get('flip_east_west')
