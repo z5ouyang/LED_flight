@@ -14,7 +14,7 @@ PLANE_SPEED=0.001
 SHORT_CANVAS=1
 LONG_CANVAS=2
 ALT_CANVAS=3
-FLIP_EAST_WEST=False flip_east_west
+FLIP_EAST_WEST=False
 
 def get_serial():
     strSerial = "/proc/device-tree/serial-number"
