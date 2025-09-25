@@ -149,7 +149,7 @@ def init(config):
 
 def main():
     config = ut.get_config()
-    if not init():
+    if not init(config):
         return    
     ml.VERBOSE_LEVEL=VERBOSE_LEVEL
     if not check_wifi():
