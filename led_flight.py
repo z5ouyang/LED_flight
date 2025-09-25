@@ -5,7 +5,7 @@ import plane_icon as pi
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-VERBOSE_LEVEL=True #0: no print out; 1: important; 2: everything
+DEBUG_VERBOSE=True #0: no print out; 1: important; 2: everything
 TZ = ZoneInfo('America/Los_Angeles')
 LED_CURR_BRIGHTNESS=500
 LED_DAY_BRIGHTNESS=500
@@ -51,7 +51,7 @@ def ping_google(tryN=3):
             output = subprocess.check_output(['ping', '-c', '1', '8.8.8.8'], stderr=subprocess.STDOUT).decode()
             return True
         except subprocess.CalledProcessError as e:
-            if VERBOSE_LEVEL:
+            if DEBUG_VERBOSE:
                 print(f"Ping failed: {e.output.decode()}")
     return False
 
@@ -69,7 +69,7 @@ def set_time_zone(tz):
     try:
         TZ = ZoneInfo(tz)
     except subprocess.CalledProcessError as e:
-        if VERBOSE_LEVEL:
+        if DEBUG_VERBOSE:
             print(f"Ping failed: {e.output.decode()}")
     ml.show_text(0,0,192,32,'FFF',"Local Time Zone\n%s"%datetime.now(TZ).strftime('%Z'),True)
     time.sleep(5)
@@ -113,7 +113,7 @@ def display_alt_sp(fInfo):
     ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%s ft. %s kts"%(str(fInfo['altitude']),str(fInfo['speed'])))
 
 def show_flight(flight_info):
-    if VERBOSE_LEVEL>0:
+    if DEBUG_VERBOSE:
         print(datetime.now(TZ),flight_info)
     plane_animation()
     labels_s = [flight_info['flight_number'],flight_info['airports_short'],flight_info['aircraft_code']]
@@ -124,7 +124,7 @@ def show_flight(flight_info):
     time.sleep(5)
 
 def clear_flight(flight_index):
-    if VERBOSE_LEVEL>0:
+    if DEBUG_VERBOSE:
         print(datetime.now(TZ),"Clear")
     flight = ut.get_flight_short(requests,flight_index,DEBUG_VERBOSE=DEBUG_VERBOSE)
     if flight is not None and flight['altitude']<ut.LANDING_ALTITUDE:
@@ -142,7 +142,7 @@ def init(config):
         ml.create_canvas(LONG_CANVAS,0,16,192,16)
         FLIP_EAST_WEST = False if config.get('flip_east_west') is None else config.get('flip_east_west')
     except subprocess.CalledProcessError as e:
-        if VERBOSE_LEVEL:
+        if DEBUG_VERBOSE:
             print(f"LED controller failed: {e.output.decode()}")
         return False
     return True
@@ -151,7 +151,7 @@ def main():
     config = ut.get_config()
     if not init(config):
         return    
-    ml.VERBOSE_LEVEL=VERBOSE_LEVEL
+    ml.DEBUG_VERBOSE=DEBUG_VERBOSE
     if not check_wifi():
         return
     set_time_zone(config.get('time_zone'))
