@@ -117,3 +117,7 @@ def get_time_zone_offset(requests,tz,DEBUG_VERBOSE):
         return tInfo['gmtOffset']/3600,tInfo['abbreviation']
     return None,None
 
+def closest_heading(angle):
+    compass_points = [0, 45, 90, 135, 180, 225, 270, 315]
+    return min(compass_points, key=lambda x: abs((angle - x + 180) % 360 - 180))
+

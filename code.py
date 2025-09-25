@@ -137,16 +137,12 @@ def get_plane_rotate(heading):
     print('",\n"'.join(new_image))
     return new_image
 
-def closest_heading(angle):
-    compass_points = [0, 45, 90, 135, 180, 225, 270, 315]
-    return min(compass_points, key=lambda x: abs((angle - x + 180) % 360 - 180))
-
 def get_plane_heading(heading):
     palette = displayio.Palette(2)
     palette[0] = 0x000000  # black (off)
     palette[1] = PLANE_COLOUR  # white (on)
     airplane_bmp = displayio.Bitmap(12, 12, 2)
-    get_BMP(getattr(pi,'get_plane_'+str(closest_heading(heading)))(),airplane_bmp)
+    get_BMP(getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))(),airplane_bmp)
     tile_grid = displayio.TileGrid(airplane_bmp, pixel_shader=palette,x=51,y=19)
     return tile_grid
 

@@ -79,9 +79,13 @@ def check_brightness(night_time):
     dt = datetime.now(TZ)
     bNight = (night_time[0]<night_time[1] and night_time[0] <= dt.hour < night_time[1]) or (night_time[0]>night_time[1] and (night_time[0] <= dt.hour or dt.hour< night_time[1]))
     if bNight and LED_CURR_BRIGHTNESS!=LED_NIGHT_BRIGHTNESS:
+        if DEBUG_VERBOSE:
+            print("Night Brightness")
         LED_CURR_BRIGHTNESS=LED_NIGHT_BRIGHTNESS
         ml.set_brightness(LED_NIGHT_BRIGHTNESS)
     elif not bNight and LED_CURR_BRIGHTNESS!=LED_DAY_BRIGHTNESS:
+        if DEBUG_VERBOSE:
+            print("Day Brightness")
         LED_CURR_BRIGHTNESS=LED_DAY_BRIGHTNESS
         ml.set_brightness(LED_DAY_BRIGHTNESS)
 
@@ -107,7 +111,7 @@ def plane_animation():
 def display_alt_sp(fInfo):
     x=32
     heading = (360 - int(fInfo['heading']))%360 if FLIP_EAST_WEST else int(fInfo['heading'])
-    img = getattr(pi,'get_plane_'+str(closest_heading(heading)))()
+    img = getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))()
     w = len(img)
     ml.show_image(x,2,img)
     ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%s ft. %s kts"%(str(fInfo['altitude']),str(fInfo['speed'])))
