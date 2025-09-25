@@ -1,6 +1,6 @@
 import serial,re,time
 
-DEBUG_VERBOSE=False
+DEBUG_VERBOSE=True
 PORT="/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001K6BE-if00-port0"
 #PORT="/dev/ttyS1"
 BAUDRATE=115200 #9600
@@ -174,8 +174,8 @@ def move_frame_down(x,y,w,h):
     H = int(h).to_bytes(2,byteorder='little')
     rx_data = get_response(GID,b"\x47\x02",X+Y+W+H)
 
-#create_canvas(2,0,0,64,16)
-#create_canvas(1,0,16,192,16)
+#create_canvas(1,0,0,64,16)
+#create_canvas(2,0,16,192,16)
 def create_canvas(wid,x,y,w,h):
     WID = int(wid).to_bytes(2,byteorder='little')
     OP = b'\x00\x00'
@@ -187,9 +187,12 @@ def create_canvas(wid,x,y,w,h):
     USR=b'\x00\x00\x00\x00'
     rx_data = get_response(GID,b"\x03\x03",WID+OP+X+Y+W+H+STYLE+USR)
 
-#create_txt_programe(1,'0FF',2,5,0,2,200,"Southwest Phoenix-San Diego Boeing 737-7H4")
-#create_txt_programe(1,'F0F',4,5,0,0,0,"HA16 HNL-SAN A330")
-#create_txt_programe(2,'F0F',4,5,200,4,5,"HA16\nHNL-SAN\nA330",True)
+def delete_canvas(wid):
+    WID = int(wid).to_bytes(2,byteorder='little')
+    rx_data = get_response(GID,b"\x05\x03",WID)
+
+#create_txt_programe(2,'0FF',2,5,0,2,200,"Southwest Phoenix-San Diego Boeing 737-7H4")
+#create_txt_programe(1,'F0F',4,5,200,4,5,"HA16\nHNL-SAN\nA330",True)
 def create_txt_programe(wid,col,en,sp,du,ex,repeat,txt,multiline=False):
     WID = int(wid).to_bytes(2,byteorder='little')
     REV = b'\x00\x00'
@@ -216,6 +219,11 @@ def create_txt_programe(wid,col,en,sp,du,ex,repeat,txt,multiline=False):
     TIMES = int(repeat).to_bytes(2,byteorder='little')
     CNT = int(len(txt)).to_bytes(2,byteorder='little')
     rx_data = get_response(GID,b"\x10\x03",WID+REV+STYLE+FORMAT+ENTRY+SPENTRY+DUENTRY+HIGHLIGHT+SPHL+DUHL+EXIT+SPEXIT+TIMES+CNT+txt.encode('ascii'))
+
+def delete_programe(wid):
+    WID = int(wid).to_bytes(2,byteorder='little')
+    OP = b'\x00\xFF'
+    rx_data = get_response(GID,b"\x0F\x03",WID+OP)
 
 @staticmethod
 def calculate_modbus_crc(data):

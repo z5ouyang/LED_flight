@@ -119,6 +119,9 @@ def display_alt_sp(fInfo):
 def show_flight(flight_info):
     if DEBUG_VERBOSE:
         print(datetime.now(TZ),flight_info)
+    ml.delete_programe(SHORT_CANVAS)
+    ml.delete_programe(LONG_CANVAS)
+    ml.clear_screen()
     plane_animation()
     labels_s = [flight_info['flight_number'],flight_info['airports_short'],flight_info['aircraft_code']]
     labels_l = [flight_info['airline_name'],flight_info['airports_long'],flight_info['aircraft_model']]
@@ -136,6 +139,9 @@ def clear_flight(flight_index):
     else:
         ml.show_text(0,16,192,16,"0FF",'Out of Monitor Boundary')
     time.sleep(5)
+    ml.delete_programe(SHORT_CANVAS)
+    ml.delete_programe(LONG_CANVAS)
+    ml.clear_screen()
 
 def init(config):
     global FLIP_EAST_WEST
