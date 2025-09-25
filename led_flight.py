@@ -196,3 +196,5 @@ def main():
         time.sleep(wait_time)
         gc.collect()
 
+if __name__ == "__main__":
+    main()
