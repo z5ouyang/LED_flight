@@ -148,7 +148,7 @@ def init(config):
     return True
 
 def main():
-    config = ut.get_config(config)
+    config = ut.get_config()
     if not init():
         return    
     ml.VERBOSE_LEVEL=VERBOSE_LEVEL
