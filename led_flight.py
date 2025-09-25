@@ -1,4 +1,4 @@
-import os, subprocess,requests,time
+import os, subprocess,requests,time,gc
 import utility as ut
 import modbus_led as ml
 import plane_icon as pi
@@ -195,6 +195,8 @@ def main():
             display_date_time()
         time.sleep(wait_time)
         gc.collect()
+        if DEBUG_VERBOSE:
+            print("  Free:", gc.mem_free(), "bytes","  Allocated:", gc.mem_alloc(), "bytes")
 
 if __name__ == "__main__":
     main()
