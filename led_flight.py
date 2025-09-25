@@ -133,8 +133,6 @@ def clear_flight(flight_index):
         ml.show_text(0,16,192,16,"0FF",'Out of Monitor Boundary')
     time.sleep(5)
 
-def update_flight():
-
 def init(config):
     global FLIP_EAST_WEST
     try:
@@ -191,7 +189,7 @@ def main():
         elif findex is not None:
             if DEBUG_VERBOSE:
                 print(findex,":",findex_old)
-            update_flight(fshort)
+            display_alt_sp(fshort)
             wait_time=ut.UPDATE_TIME
         else:
             display_date_time()
