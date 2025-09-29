@@ -49,7 +49,11 @@ def get_dict_value(d,keys):
         return 'NA'
     if len(keys)==0:
         return d
-    return get_dict_value(d.get(keys[0]),keys[1:])
+    if isinstance(keys[0],(ine)):
+        return get_dict_value(d[keys[0]],keys[1:])
+    if keys[0] in d.keys():
+        return get_dict_value(d.get(keys[0]),keys[1:])
+    return None
 
 def get_est_arrival(eta):
     if eta=='Unknown':
