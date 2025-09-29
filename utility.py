@@ -96,9 +96,9 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
                 'aircraft_code': get_dict_value(flight,['aircraft','model','code']),
                 'aircraft_model': get_dict_value(flight,['aircraft','model','text']),
                 'status': get_dict_value(flight,['status','text']),
-                'altitude': flight['trail'][0]['alt'],
-                'heading': flight['trail'][0]['hd'],
-                'speed': flight['trail'][0]['spd'],
+                'altitude': get_dict_value(flight,['trail',0,'alt']),
+                'heading': get_dict_value(flight,['trail',0,'hd']),
+                'speed': get_dict_value(flight,['trail',0,'spd']),
                 'eta': get_dict_value(flight,['time','estimated','arrival'])
             }
             flight_details['flight_number'] = flight_details['flight_number'] if not flight_details['flight_number']=='NA' else flight_details['airline_name']
