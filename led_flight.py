@@ -114,7 +114,7 @@ def display_alt_sp(fInfo):
     img = getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))()
     w = len(img)
     ml.show_image(x,2,img)
-    ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%s ft. %s kts"%(str(fInfo['altitude']),str(fInfo['speed'])))
+    ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%sft %skts"%(str(fInfo['altitude']),str(fInfo['speed'])))
 
 def show_flight(flight_info):
     if DEBUG_VERBOSE:
