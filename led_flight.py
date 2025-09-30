@@ -58,9 +58,9 @@ def ping_google(tryN=3):
 def check_wifi():
     fwifi = ping_google()
     if fwifi:
-        ml.show_text(0,0,192,32,'FFF',"Connected to\n%s"%get_wifi_ssid(),True)
+        ml.show_text(0,0,192,32,'FFF',"Connected to\n%s"%get_wifi_ssid(),multiline=True)
     else:
-        ml.show_text(0,0,192,32,'FFF',"WIFI\nFailed",True)
+        ml.show_text(0,0,192,32,'FFF',"WIFI\nFailed",multiline=True)
     time.sleep(5)
     return fwifi
 
@@ -71,7 +71,7 @@ def set_time_zone(tz):
     except subprocess.CalledProcessError as e:
         if DEBUG_VERBOSE:
             print(f"Ping failed: {e.output.decode()}")
-    ml.show_text(0,0,192,32,'FFF',"Local Time Zone\n%s"%datetime.now(TZ).strftime('%Z'),True)
+    ml.show_text(0,0,192,32,'FFF',"Local Time Zone\n%s"%datetime.now(TZ).strftime('%Z'),multiline=True)
     time.sleep(5)
 
 def check_brightness(night_time):
@@ -91,7 +91,7 @@ def check_brightness(night_time):
 
 def display_date_time():
     dt = datetime.now(TZ)
-    ml.show_text(0,0,192,32,"FF0","%s %d\t%s\n\t\t%s"%(dt.strftime('%b'),dt.day,dt.strftime('%a'),dt.strftime('%H:%M')),True)
+    ml.show_text(0,0,192,32,"FF0","%s %d\t%s\n\t\t%s"%(dt.strftime('%b'),dt.day,dt.strftime('%a'),dt.strftime('%H:%M')),multiline=True)
 
 def plane_animation():
     img = pi.get_plane_horizontal()

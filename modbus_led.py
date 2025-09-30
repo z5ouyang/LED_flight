@@ -115,7 +115,7 @@ def get_font_number():
 def clear_screen():
     rx_data = get_response(GID,b"\x00\x02")
 
-def show_text(x,y,w,h,col,txt,multiline=False):
+def show_text(x,y,w,h,col,txt,multiline=False,font=None):
     if len(col)>3 or not set(col).issubset({'F','0'}):
         if DEBUG_VERBOSE:
             print("Incorrect color code:",col,"\tset it to white")
@@ -126,7 +126,7 @@ def show_text(x,y,w,h,col,txt,multiline=False):
     H = int(h).to_bytes(2,byteorder='little')
     col = re.sub("F","1",col)[::-1]
     col = "1000" if col=='000' else "0"+col
-    font_id = '00000000'
+    font_id = '00000000' if font is None else format(font,'08b')
     h_align = '00'
     v_align = '00'
     others = '0000' if multiline else '0010'
@@ -193,7 +193,7 @@ def delete_canvas(wid):
 
 #create_txt_programe(2,'0FF',2,5,0,2,200,"Southwest Phoenix-San Diego Boeing 737-7H4")
 #create_txt_programe(1,'F0F',4,5,200,4,5,"HA16\nHNL-SAN\nA330",True)
-def create_txt_programe(wid,col,en,sp,du,ex,repeat,txt,multiline=False):
+def create_txt_programe(wid,col,en,sp,du,ex,repeat,txt,multiline=False,font=None):
     WID = int(wid).to_bytes(2,byteorder='little')
     REV = b'\x00\x00'
     STYLE= b'\x00\x00\x00\x00'
@@ -203,7 +203,7 @@ def create_txt_programe(wid,col,en,sp,du,ex,repeat,txt,multiline=False):
         col="FFF"
     col = re.sub("F","1",col)[::-1]
     col = "1000" if col=='000' else "0"+col
-    font_id = '00000000'
+    font_id = '00000000' if font is None else format(font,'08b')
     h_align = '00'
     v_align = '00'
     others = '0000' if multiline else '0010'
