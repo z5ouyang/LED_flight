@@ -133,14 +133,16 @@ def show_flight(flight_info):
 def clear_flight(flight_index):
     if DEBUG_VERBOSE:
         print(datetime.now(TZ),"Clear")
+    ml.delete_programe(SHORT_CANVAS)
+    ml.delete_programe(LONG_CANVAS)
     flight = ut.get_flight_short(requests,flight_index,DEBUG_VERBOSE=DEBUG_VERBOSE)
+    ml.show_text(0,0,192,16,"F0F","%s %s-%s %s"%(flight['flight_number'],flight['ori'],flight['dest'],flight['aircraft_type']))
     if flight is not None and flight['altitude']<ut.LANDING_ALTITUDE:
         ml.show_text(0,16,192,16,"0FF","Landed\t"+str(flight["speed"])+' kts')
     else:
         ml.show_text(0,16,192,16,"0FF",'Out of Monitor Boundary')
     time.sleep(5)
-    ml.delete_programe(SHORT_CANVAS)
-    ml.delete_programe(LONG_CANVAS)
+
     ml.clear_screen()
 
 def init(config):
