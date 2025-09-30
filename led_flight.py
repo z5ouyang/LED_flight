@@ -102,7 +102,7 @@ def plane_animation():
     h2 = H-h-h1
     for i in range(h1):
         img.insert(0,"0"*w)
-    for i in range(h1):
+    for i in range(h2):
         img.append("0"*w)
     ml.show_image(W-w,0,img)
     for i in range(W):
@@ -142,7 +142,6 @@ def clear_flight(flight_index):
     else:
         ml.show_text(0,16,192,16,"0FF",'Out of Monitor Boundary')
     time.sleep(5)
-
     ml.clear_screen()
 
 def init(config):

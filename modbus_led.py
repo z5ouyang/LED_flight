@@ -218,7 +218,11 @@ def create_txt_programe(wid,col,en,sp,du,ex,repeat,txt,multiline=False):
     SPEXIT = SPENTRY
     TIMES = int(repeat).to_bytes(2,byteorder='little')
     CNT = int(len(txt)).to_bytes(2,byteorder='little')
-    rx_data = get_response(GID,b"\x10\x03",WID+REV+STYLE+FORMAT+ENTRY+SPENTRY+DUENTRY+HIGHLIGHT+SPHL+DUHL+EXIT+SPEXIT+TIMES+CNT+txt.encode('ascii'))
+    try:
+        rx_data = get_response(GID,b"\x10\x03",WID+REV+STYLE+FORMAT+ENTRY+SPENTRY+DUENTRY+HIGHLIGHT+SPHL+DUHL+EXIT+SPEXIT+TIMES+CNT+txt.encode('ascii'))
+    except Exception as e:
+        print("Error in create_txt_programe:",txt)
+        print(f"\tmessage: {e}")
 
 def delete_programe(wid):
     WID = int(wid).to_bytes(2,byteorder='little')
