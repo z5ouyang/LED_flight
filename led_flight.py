@@ -16,6 +16,7 @@ SHORT_CANVAS=1
 LONG_CANVAS=2
 PLANE_CANVAS=3
 FLIP_EAST_WEST=False
+PLANE_HEADING=0
 
 def get_serial():
     strSerial = "/proc/device-tree/serial-number"
@@ -126,14 +127,17 @@ def plane_animation(heading=None):
     time.sleep(2)
 
 def display_alt_sp(fInfo):
+    global PLANE_HEADING
     if fInfo['heading']=='NA':
         return
     x=64
-    heading = (360 - int(fInfo['heading']))%360 if FLIP_EAST_WEST else int(fInfo['heading'])
-    img = getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))()
-    w = len(img)
-    ml.clear_area(x,2,w,w)
-    ml.show_image(x,2,img)
+    heading = ut.closest_heading((360 - int(fInfo['heading']))%360 if FLIP_EAST_WEST else int(fInfo['heading']))
+    if PLANE_HEADING!=heading:
+        img = getattr(pi,'get_plane_'+str(heading))()
+        w = len(img)
+        ml.clear_area(x,2,w,w)
+        ml.show_image(x,2,img)
+        PLANE_HEADING=heading
     ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%sft %skts"%(str(fInfo['altitude']),str(fInfo['speed'])),h_align='00',font=3)
 
 def show_flight(flight_info):
