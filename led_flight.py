@@ -237,7 +237,7 @@ def watchdog(timeout, child_process, wdt_pipe):
             if msg == "feed":
                 last_feed = time.time()
         if time.time() - last_feed > timeout:
-            print("Watchdog timeout! Restarting process...")
+            print(datetime.now(TZ),"Watchdog timeout! Restarting process...")
             child_process.terminate()
             child_process.join()
             restart_program()
