@@ -166,6 +166,11 @@ def init(config):
         ml.create_canvas(LONG_CANVAS,0,16,192,16)
         ml.create_canvas(PLANE_CANVAS,0,0,192,32)
         FLIP_EAST_WEST = False if config.get('flip_east_west') is None else config.get('flip_east_west')
+        ml.DEBUG_VERBOSE=DEBUG_VERBOSE
+        if not check_wifi():
+            return False
+        set_time_zone(config.get('time_zone'))
+        ml.clear_screen()
     except subprocess.CalledProcessError as e:
         if DEBUG_VERBOSE:
             print(f"LED controller failed: {e.output.decode()}")
@@ -175,11 +180,7 @@ def init(config):
 def main():
     config = ut.get_config()
     if not init(config):
-        return    
-    ml.DEBUG_VERBOSE=DEBUG_VERBOSE
-    if not check_wifi():
         return
-    set_time_zone(config.get('time_zone'))
     findex_old=None
     finfo=None
     flight_followed=ut.MAX_FOLLOW_PLAN
