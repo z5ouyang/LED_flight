@@ -79,7 +79,7 @@ def get_flights(requests,geoloc,altitude=None,heading=None,center_geoloc=None,de
                flight_dist[k] = get_distance(center_geoloc,v[1:3])
                flight_short[k] = {FLIGHT_SHORT_KEYS[i]:v[i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(v)))}#    {'heading':v[3],'altitude':v[4]}
     flight_index = None if len(flight_dist)==0 else min(flight_dist, key=flight_dist.get)
-    return flight_index,None if flight_index is None else flight_short[flight_index],len(flight)>0 # return a flag meaning the requests were successful
+    return flight_index,None if flight_index is None else flight_short[flight_index],flight is not None and len(flight)>0 # return a flag meaning the requests were successful
 
 def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
     if DEBUG_VERBOSE:
