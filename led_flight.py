@@ -1,4 +1,4 @@
-import os, subprocess,requests,time,gc
+import os, subprocess,requests,time,gc,sys
 import utility as ut
 import modbus_led as ml
 import plane_icon as pi
@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 DEBUG_VERBOSE=True #0: no print out; 1: important; 2: everything
 TZ = ZoneInfo('America/Los_Angeles')
+TIMEOUT=60
 LED_CURR_BRIGHTNESS=500
 LED_DAY_BRIGHTNESS=500
 LED_NIGHT_BRIGHTNESS=10
@@ -179,7 +180,7 @@ def init(config):
         return False
     return True
 
-def main():
+def main(wdt_pipe):
     config = ut.get_config()
     if not init(config):
         return
@@ -192,6 +193,8 @@ def main():
         check_brightness(config.get("display_time_night"))
         findex,fshort,req_success = ut.get_flights(requests,config['geo_loc'],config.get('altitude'),config.get('heading'),
             config.get('center_loc'),config.get('dest'),config.get('speed'),DEBUG_VERBOSE=DEBUG_VERBOSE)
+        if req_success:
+            wdt_pipe.send("feed")
         ## follow the previous plane when it moved outside the boundary but no new plane entered
         if findex is None and findex_old is not None and flight_followed>0:
             if DEBUG_VERBOSE:
@@ -226,5 +229,26 @@ def main():
         #if DEBUG_VERBOSE:
         #    print("  Free:", gc.mem_free(), "bytes","  Allocated:", gc.mem_alloc(), "bytes")
 
+def watchdog(timeout, child_process, wdt_pipe):
+    last_feed = time.time()
+    while True:
+        if wdt_pipe.poll():
+            msg = wdt_pipe.recv()
+            if msg == "feed":
+                last_feed = time.time()
+        if time.time() - last_feed > timeout:
+            print("Watchdog timeout! Restarting process...")
+            child_process.terminate()
+            child_process.join()
+            restart_program()
+        time.sleep(1)
+
+def restart_program():
+    python = sys.executable
+    os.execv(python, [python] + sys.argv)
+
 if __name__ == "__main__":
-    main()
+    parent_conn, child_conn = multiprocessing.Pipe()
+    p = multiprocessing.Process(target=main, args=(child_conn,))
+    p.start()
+    watchdog(timeout=TIMEOUT,child_process=p,wdt_pipe=parent_conn)

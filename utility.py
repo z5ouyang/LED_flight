@@ -3,7 +3,7 @@ import json,traceback,gc,time,math,os,re
 WAIT_TIME=15
 UPDATE_TIME=5
 WAIT_TIME_MAX=75
-MAX_FOLLOW_PLAN=60
+MAX_FOLLOW_PLAN=70
 LANDING_ALTITUDE=51
 FLIGHT_SEARCH_HEAD="https://data-cloud.flightradar24.com/zones/fcgi/feed.js?"
 FLIGHT_SEARCH_TAIL="&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1" #&limit=1

@@ -153,7 +153,7 @@ def display_flight(flight_info,matrixportal):
         g[i].x=1
 
 def update_flight(flight_short,matrixportal,flip_east_west=None):
-    if flight_info is None or :
+    if flight_short['heading'] is None or flight_short['heading']=='':
         return
     labels_s = [flight_short['flight_number'],flight_short['ori']+'-'+flight_short['dest'],str(flight_short['altitude'])+' ft']
     g = get_text(labels_s)
