@@ -132,6 +132,7 @@ def display_alt_sp(fInfo):
     heading = (360 - int(fInfo['heading']))%360 if FLIP_EAST_WEST else int(fInfo['heading'])
     img = getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))()
     w = len(img)
+    ml.clear_area(x,2,w,w)
     ml.show_image(x,2,img)
     ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%sft %skts"%(str(fInfo['altitude']),str(fInfo['speed'])),h_align='00',font=3)
 

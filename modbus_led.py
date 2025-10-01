@@ -115,6 +115,17 @@ def get_font_number():
 def clear_screen():
     rx_data = get_response(GID,b"\x00\x02")
 
+def clear_area(x,y,w,h):
+    pCol = get_paint_color()
+    set_paint_color('000')
+    X = int(x).to_bytes(2,byteorder='little')
+    Y = int(y).to_bytes(2,byteorder='little')
+    W = int(w).to_bytes(2,byteorder='little')
+    H = int(h).to_bytes(2,byteorder='little')
+    rx_data = get_response(GID,b"\x1C\x02",X+Y+W+H)
+    set_paint_color(pCol)
+
+
 def show_text(x,y,w,h,col,txt,h_align='01',v_align='01',multiline=False,font=None):
     if len(col)>3 or not set(col).issubset({'F','0'}):
         if DEBUG_VERBOSE:
