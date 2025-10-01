@@ -132,9 +132,9 @@ def display_alt_sp(fInfo):
         return
     x=64
     heading = ut.closest_heading((360 - int(fInfo['heading']))%360 if FLIP_EAST_WEST else int(fInfo['heading']))
-    if PLANE_HEADING!=heading:
-        img = getattr(pi,'get_plane_'+str(heading))()
-        w = len(img)
+    img = getattr(pi,'get_plane_'+str(heading))()
+    w = len(img)
+    if PLANE_HEADING!=heading:        
         ml.clear_area(x,2,w,w)
         ml.show_image(x,2,img)
         PLANE_HEADING=heading
@@ -173,8 +173,9 @@ def init(config):
     try:
         ml.get_GID()
         ml.set_text_color('FF0')
-        ml.delete_programe(SHORT_CANVAS)
-        ml.delete_programe(LONG_CANVAS)
+        ml.delete_canvas(SHORT_CANVAS)
+        ml.delete_canvas(LONG_CANVAS)
+        ml.delete_canvas(PLANE_CANVAS)
         ml.create_canvas(SHORT_CANVAS,0,0,64,16)
         ml.create_canvas(LONG_CANVAS,0,16,192,16)
         ml.create_canvas(PLANE_CANVAS,0,0,192,32)
