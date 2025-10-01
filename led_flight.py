@@ -38,12 +38,16 @@ def get_serial():
     #    return f"Error: {e}"
     return "0000000000000000"
 
-def get_wifi_ssid():
-    try:
-        ssid = subprocess.check_output(['iwgetid', '-r']).decode().strip()
-        return ssid if ssid else "Not connected to Wi-Fi"
-    except subprocess.CalledProcessError:
-        return "Wi-Fi SSID not found"
+def get_wifi_ssid(tryN=3):
+    while tryN>0:
+        tryN -=1
+        try:
+            ssid = subprocess.check_output(['iwgetid', '-r']).decode().strip()
+            return ssid if ssid else "Not connected to Wi-Fi"
+        except Exception as e:
+            print(f"Error: {e}")
+        time.sleep(5)
+    return "Wi-Fi SSID not found"
 
 def ping_google(tryN=3):
     while tryN>0:
