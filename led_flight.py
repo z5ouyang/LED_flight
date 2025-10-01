@@ -42,7 +42,7 @@ def get_wifi_ssid(tryN=3):
     while tryN>0:
         tryN -=1
         try:
-            ssid = subprocess.check_output(['iwgetid', '-r']).decode().strip()
+            ssid = subprocess.check_output(['/usr/sbin/iwgetid', '-r']).decode().strip()
             return ssid if ssid else "Not connected to Wi-Fi"
         except Exception as e:
             print(f"Error: {e}")
