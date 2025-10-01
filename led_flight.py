@@ -54,6 +54,7 @@ def ping_google(tryN=3):
         except subprocess.CalledProcessError as e:
             if DEBUG_VERBOSE:
                 print(f"Ping failed: {e.output.decode()}")
+        time.sleep(5)
     return False
 
 def check_wifi():
