@@ -122,7 +122,7 @@ def display_alt_sp(fInfo):
     img = getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))()
     w = len(img)
     ml.show_image(x,2,img)
-    ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%sft %skts"%(str(fInfo['altitude']),str(fInfo['speed'])))
+    ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%sft %skts"%(str(fInfo['altitude']),str(fInfo['speed'])),font=3)
 
 def show_flight(flight_info):
     if DEBUG_VERBOSE:
@@ -133,8 +133,8 @@ def show_flight(flight_info):
     plane_animation(flight_info['heading'])
     labels_s = [flight_info['flight_number'],flight_info['airports_short'],flight_info['aircraft_code']]
     labels_l = [flight_info['airline_name'],flight_info['airports_long'],flight_info['aircraft_model']]
-    ml.create_txt_programe(SHORT_CANVAS,'F0F',4,5,200,4,50,'\n'.join(labels_s),True)
-    ml.create_txt_programe(LONG_CANVAS,'F0F',2,5,0,2,20,' '.join(labels_l))
+    ml.create_txt_programe(SHORT_CANVAS,'F0F',4,5,200,4,50,'\n'.join(labels_s),multiline=True,font=4)
+    ml.create_txt_programe(LONG_CANVAS,'F0F',2,5,0,2,20,' '.join(labels_l),font=3)
     display_alt_sp(flight_info)
     time.sleep(5)
 
