@@ -91,7 +91,10 @@ def check_brightness(night_time):
 
 def display_date_time():
     dt = datetime.now(TZ)
-    ml.show_text(0,0,192,32,"FF0","%s %d\t%s\n\t\t%s"%(dt.strftime('%b'),dt.day,dt.strftime('%a'),dt.strftime('%H:%M')),multiline=True)
+    ml.show_text(0,0,64,16,'FF0',dt.strftime('%b'),font=4)
+    ml.show_text(128,0,64,16,'FF0',dt.strftime('%a'),font=4)
+    ml.show_text(64,16,64,16,'FF0',dt.strftime('%H:%M'),font=4)
+    #ml.show_text(0,0,192,32,"FF0","%s %d\t%s\n\t\t%s"%(dt.strftime('%b'),dt.day,dt.strftime('%a'),dt.strftime('%H:%M')),multiline=True)
 
 def plane_animation_old():
     img = pi.get_plane_horizontal()
@@ -144,11 +147,11 @@ def clear_flight(flight_index):
     ml.delete_programe(SHORT_CANVAS)
     ml.delete_programe(LONG_CANVAS)
     flight = ut.get_flight_short(requests,flight_index,DEBUG_VERBOSE=DEBUG_VERBOSE)
-    ml.show_text(0,0,192,16,"F0F","%s %s-%s %s"%(flight['flight_number'],flight['ori'],flight['dest'],flight['aircraft_type']))
+    ml.show_text(0,0,192,16,"F0F","%s %s-%s %s"%(flight['flight_number'],flight['ori'],flight['dest'],flight['aircraft_type']),font=4)
     if flight is not None and flight['altitude']<ut.LANDING_ALTITUDE:
-        ml.show_text(0,16,192,16,"0FF","Landed\t"+str(flight["speed"])+' kts')
+        ml.show_text(0,16,192,16,"0FF","Landed\t"+str(flight["speed"])+' kts',font=3)
     else:
-        ml.show_text(0,16,192,16,"0FF",'Out of Monitor Boundary')
+        ml.show_text(0,16,192,16,"0FF",'Out of Monitor Boundary',font=3)
     time.sleep(5)
     ml.clear_screen()
 

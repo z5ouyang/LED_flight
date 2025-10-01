@@ -127,8 +127,8 @@ def show_text(x,y,w,h,col,txt,multiline=False,font=None):
     col = re.sub("F","1",col)[::-1]
     col = "1000" if col=='000' else "0"+col
     font_id = '00000000' if font is None else format(font,'08b')
-    h_align = '00'
-    v_align = '00'
+    h_align = '01'
+    v_align = '01'
     others = '0000' if multiline else '0010'
     FORMAT = int("000000000000"+col+font_id+h_align+v_align+others, 2).to_bytes(4, byteorder='little')
     CNT = int(len(txt)).to_bytes(2,byteorder='little')
