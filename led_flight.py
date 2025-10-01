@@ -13,7 +13,7 @@ LED_NIGHT_BRIGHTNESS=10
 PLANE_SPEED=0.001
 SHORT_CANVAS=1
 LONG_CANVAS=2
-ALT_CANVAS=3
+PLANE_CANVAS=3
 FLIP_EAST_WEST=False
 
 def get_serial():
@@ -93,7 +93,7 @@ def display_date_time():
     dt = datetime.now(TZ)
     ml.show_text(0,0,192,32,"FF0","%s %d\t%s\n\t\t%s"%(dt.strftime('%b'),dt.day,dt.strftime('%a'),dt.strftime('%H:%M')),multiline=True)
 
-def plane_animation():
+def plane_animation_old():
     img = pi.get_plane_horizontal()
     w = h = len(img)
     H = 32
@@ -107,6 +107,14 @@ def plane_animation():
     ml.show_image(W-w,0,img)
     for i in range(W):
         ml.move_frame_left(max(0,W-w-i),0,w,H)
+
+def plane_animation(heading=None):
+    heading = heading if heading is None else 270
+    if heading<180:
+        ml.create_img_program(PLANE_CANVAS,2,0,0,2,0,2)
+    else:
+        ml.create_img_program(PLANE_CANVAS,1,0,0,3,0,1)
+    time.sleep(2)
 
 def display_alt_sp(fInfo):
     x=64
@@ -122,7 +130,7 @@ def show_flight(flight_info):
     ml.delete_programe(SHORT_CANVAS)
     ml.delete_programe(LONG_CANVAS)
     ml.clear_screen()
-    plane_animation()
+    plane_animation(flight_info['heading'])
     labels_s = [flight_info['flight_number'],flight_info['airports_short'],flight_info['aircraft_code']]
     labels_l = [flight_info['airline_name'],flight_info['airports_long'],flight_info['aircraft_model']]
     ml.create_txt_programe(SHORT_CANVAS,'F0F',4,5,200,4,50,'\n'.join(labels_s),True)
@@ -153,6 +161,7 @@ def init(config):
         ml.delete_programe(LONG_CANVAS)
         ml.create_canvas(SHORT_CANVAS,0,0,64,16)
         ml.create_canvas(LONG_CANVAS,0,16,192,16)
+        ml.create_canvas(PLANE_CANVAS,0,0,192,32)
         FLIP_EAST_WEST = False if config.get('flip_east_west') is None else config.get('flip_east_west')
     except subprocess.CalledProcessError as e:
         if DEBUG_VERBOSE:

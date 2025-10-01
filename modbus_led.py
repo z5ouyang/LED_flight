@@ -224,6 +224,28 @@ def create_txt_programe(wid,col,en,sp,du,ex,repeat,txt,multiline=False,font=None
         print("Error in create_txt_programe:",txt)
         print(f"\tmessage: {e}")
 
+def create_img_program(wid,en,sp,du,ex,repeat,img):
+    WID = int(wid).to_bytes(2,byteorder='little')
+    REV = b'\x00\x00'
+    STYLE= b'\x00\x00\x00\x00'
+    FORMAT = b'\x00\x00\x00\x00'
+    ENTRY = int(en).to_bytes(2,byteorder='little')
+    SPENTRY = int(sp).to_bytes(2,byteorder='little')
+    DUENTRY = int(du).to_bytes(2,byteorder='little')
+    HIGHLIGHT = b'\x00\x00'
+    TIMESHL = b'\x00\x00'
+    DUHL = b'\x00\x00' 
+    EXIT = int(ex).to_bytes(2,byteorder='little')
+    SPEXIT = SPENTRY
+    TIMES = int(repeat).to_bytes(2,byteorder='little')
+    REV1 = b'\x00\x00'
+    BMPSRC= b'\x00\x00\x00\x00\x02\x00\x00\x00'
+    SRC=int(img).to_bytes(2,byteorder='little')
+    try:
+        rx_data = get_response(GID,b"\x12\x03",WID+REV+STYLE+FORMAT+ENTRY+SPENTRY+DUENTRY+HIGHLIGHT+TIMESHL+DUHL+EXIT+SPEXIT+TIMES+REV1+BMPSRC+SRC)
+    except Exception as e:
+        print(f"Error: {e}")
+
 def delete_programe(wid):
     WID = int(wid).to_bytes(2,byteorder='little')
     OP = b'\x00\xFF'
