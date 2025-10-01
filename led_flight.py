@@ -246,6 +246,7 @@ def watchdog(timeout, child_process, wdt_pipe):
             child_process.terminate()
             child_process.join()
             restart_program()
+            sys.exit()
         time.sleep(1)
 
 def restart_program():
