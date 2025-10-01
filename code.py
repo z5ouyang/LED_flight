@@ -108,35 +108,6 @@ def get_plane_Bmp(matrixportal):
     planeG.append(planeTg)
     return planeG
 
-def get_plane_rotate(heading):
-    north = [
-        "000001100000",
-        "000001100000",
-        "000001100000",
-        "000001100000",
-        "000011110000",
-        "000111111000",
-        "001111111100",
-        "011111111110",
-        "111001100111",
-        "000001100000",
-        "000011110000",
-        "000010010000",
-    ]
-    new_image=['000000000000']*12
-    angle_rad = math.radians(heading)
-    cx=5.5
-    cy=5.5
-    for x in range(12):
-        for y in range(12):
-            dx = x - cx
-            dy = y - cy
-            x_new = min(11,max(0,round(cx + dx * math.cos(angle_rad) - dy * math.sin(angle_rad))))
-            y_new = min(11,max(0,round(cy + dx * math.sin(angle_rad) + dy * math.cos(angle_rad))))
-            new_image[y_new]= new_image[y_new][:x_new]+north[y][x]+new_image[y_new][(x_new+1):]
-    print('",\n"'.join(new_image))
-    return new_image
-
 def get_plane_heading(heading):
     palette = displayio.Palette(2)
     palette[0] = 0x000000  # black (off)
@@ -181,10 +152,10 @@ def display_flight(flight_info,matrixportal):
         g[i].text=labels_s[i]
         g[i].x=1
 
-def update_flight(flight_short,flight_info,matrixportal,flip_east_west=None):
-    if flight_info is None:
+def update_flight(flight_short,matrixportal,flip_east_west=None):
+    if flight_info is None or :
         return
-    labels_s = [flight_info['flight_number'],flight_info['airports_short'],str(flight_short['altitude'])+' ft']
+    labels_s = [flight_short['flight_number'],flight_short['ori']+'-'+flight_short['dest'],str(flight_short['altitude'])+' ft']
     g = get_text(labels_s)
     heading = (360 - int(flight_short['heading']))%360 if flip_east_west else int(flight_short['heading'])
     g.append(get_plane_heading(heading))
@@ -253,7 +224,7 @@ def main():
         elif findex is not None:
             if DEBUG_VERBOSE:
                 print(findex,":",findex_old)
-            update_flight(fshort,finfo,mp,config.get('flip_east_west'))
+            update_flight(fshort,mp,config.get('flip_east_west'))
             wait_time=ut.UPDATE_TIME
         else:
             display_date_time(config.get("display_time_night"),mp)

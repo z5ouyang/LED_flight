@@ -112,7 +112,7 @@ def plane_animation_old():
         ml.move_frame_left(max(0,W-w-i),0,w,H)
 
 def plane_animation(heading=None):
-    heading = heading if heading is None else 270
+    heading = 270 if heading is None or heading=='NA' else heading
     if heading<180:
         ml.create_img_program(PLANE_CANVAS,2,0,0,2,0,2)
     else:
@@ -120,6 +120,8 @@ def plane_animation(heading=None):
     time.sleep(2)
 
 def display_alt_sp(fInfo):
+    if fInfo['heading']=='NA':
+        return
     x=64
     heading = (360 - int(fInfo['heading']))%360 if FLIP_EAST_WEST else int(fInfo['heading'])
     img = getattr(pi,'get_plane_'+str(ut.closest_heading(heading)))()
