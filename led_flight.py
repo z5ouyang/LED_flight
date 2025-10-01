@@ -91,7 +91,7 @@ def check_brightness(night_time):
 
 def display_date_time():
     dt = datetime.now(TZ)
-    ml.show_text(0,0,64,16,'FF0',dt.strftime('%b'),font=4)
+    ml.show_text(0,0,64,16,'FF0',"%s %s"%(dt.strftime('%b'),dt.day),font=4)
     ml.show_text(128,0,64,16,'FF0',dt.strftime('%a'),font=4)
     ml.show_text(64,16,64,16,'FF0',dt.strftime('%H:%M'),font=4)
     #ml.show_text(0,0,192,32,"FF0","%s %d\t%s\n\t\t%s"%(dt.strftime('%b'),dt.day,dt.strftime('%a'),dt.strftime('%H:%M')),multiline=True)
