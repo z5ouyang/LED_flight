@@ -141,6 +141,8 @@ def display_alt_sp(fInfo):
     ml.show_text(x+w+2,0,190-x-w,16,'FF0',"%sft %skts"%(str(fInfo['altitude']),str(fInfo['speed'])),h_align='00',font=3)
 
 def show_flight(flight_info):
+    global PLANE_HEADING
+    PLANE_HEADING=-1
     if DEBUG_VERBOSE:
         print(datetime.now(TZ),flight_info)
     ml.delete_programe(SHORT_CANVAS)
