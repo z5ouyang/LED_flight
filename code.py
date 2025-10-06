@@ -1,4 +1,4 @@
-import os, time, board, terminalio, json, displayio, framebufferio, rgbmatrix, gc, busio, neopixel, re, ssl, wifi, socketpool, rtc, adafruit_ntp,wifi,ipaddress
+import os, time, board, terminalio, json, displayio, framebufferio, rgbmatrix, gc, busio, neopixel, re, ssl, wifi, socketpool, rtc, adafruit_ntp,wifi,ipaddress,traceback
 import utility as ut
 import plane_icon as pi
 from random import randrange
@@ -28,6 +28,34 @@ PAUSE_BETWEEN_LABEL_SCROLLING=2
 PLANE_SPEED=0.04
 # speed text labels will move - pause time per pixel shift in seconds
 TEXT_SPEED=0.04
+# Git sync not called due to write-only system
+GIT_COMMIT={'code.py':'','utility.py':'','plane_icon.py':''}
+GIT_DATE=''
+
+def git_sync():
+    global GIT_COMMIT
+    global GIT_DATE
+    now = time.localtime()
+    str_date = f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02}"
+    if GIT_DATE==str_date:
+        return
+    GIT_DATE=str_date
+    for f in GIT_COMMIT.keys():
+        try:
+            url = "https://api.github.com/repos/z5ouyang/LED_flight/commits?path="+f
+            res = REQUESTS.get(url=url).json()
+            if GIT_COMMIT[f] != res[0]['sha']:
+                sha = res[0]['sha']
+                url = "https://raw.githubusercontent.com/z5ouyang/LED_flight/main/"+f
+                res = REQUESTS.get(url=url)
+                if res is not None and res.text is not None and len(res.txt)>10:
+                    with open(f,'w') as file:
+                        file.write(res.txt)
+                    GIT_COMMIT[f] = sha
+        except Exception as e:
+            if DEBUG_VERBOSE:
+                print("GITHUB error for",f)
+                print(''.join(traceback.format_exception(None, e, e.__traceback__)))
 
 def get_matrix_portal():
     status_light = neopixel.NeoPixel(
@@ -153,7 +181,7 @@ def display_flight(flight_info,matrixportal):
         g[i].x=1
 
 def update_flight(flight_short,matrixportal,flip_east_west=None):
-    if flight_short['heading'] is None or flight_short['heading']=='':
+    if flight_short is None or flight_short['heading'] is None or flight_short['heading']=='':
         return
     labels_s = [flight_short['flight_number'],flight_short['ori']+'-'+flight_short['dest'],str(flight_short['altitude'])+' ft']
     g = get_text(labels_s)
@@ -206,7 +234,7 @@ def main():
                 print(findex,":",findex_old,":",flight_followed)
             fshort = ut.get_flight_short(REQUESTS,findex_old,DEBUG_VERBOSE=DEBUG_VERBOSE)
             findex = findex_old
-            if fshort['altitude']<ut.LANDING_ALTITUDE:
+            if fshort is not None and fshort['altitude']<ut.LANDING_ALTITUDE:
                 flight_followed=0
             flight_followed -=1
         ##
@@ -233,6 +261,13 @@ def main():
         if DEBUG_VERBOSE:
             print("  Free:", gc.mem_free(), "bytes","  Allocated:", gc.mem_alloc(), "bytes")
 
-main()
-time.sleep(300)
+try:
+    main()
+except Exception as e:
+    error_text = ''.join(traceback.format_exception(None, e, e.__traceback__))
+    now = time.localtime()
+    print("========",f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","========\n")
+    print(error_text)
+
+#time.sleep(300)
 #the Matrix Portal S3 running CircuitPython 9.x
