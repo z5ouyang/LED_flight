@@ -11,6 +11,7 @@ TIMEOUT=60
 LED_CURR_BRIGHTNESS=500
 LED_DAY_BRIGHTNESS=500
 LED_NIGHT_BRIGHTNESS=10
+LED_SUN_RISE=None
 PLANE_SPEED=0.001
 SHORT_CANVAS=1
 LONG_CANVAS=2
@@ -81,10 +82,27 @@ def set_time_zone(tz):
     ml.show_text(0,0,192,32,'FFF',"Local Time Zone\n%s"%datetime.now(TZ).strftime('%Z'),multiline=True)
     time.sleep(5)
 
-def check_brightness(night_time):
+def check_brightness(night_time,geo_loc=None):
     global LED_CURR_BRIGHTNESS
+    global LED_SUN_RISE
     dt = datetime.now(TZ)
-    bNight = (night_time[0]<night_time[1] and night_time[0] <= dt.hour < night_time[1]) or (night_time[0]>night_time[1] and (night_time[0] <= dt.hour or dt.hour< night_time[1]))
+    if geo_loc is not None and (LED_SUN_RISE is None or not dt.date().isoformat() in LED_SUN_RISE.keys()):
+        try:
+            response = requests.get(
+                "https://api.sunrise-sunset.org/json",
+                params={
+                    "lat": geo_loc[0],
+                    "lng": geo_loc[2],
+                    "date": dt.date().isoformat(),
+                    "formatted": 0  # Use ISO 8601 format
+                }
+            )
+            sunrise_time = datetime.fromisoformat(response.json()["results"]["sunrise"]).astimezone(TZ)
+            LED_SUN_RISE = {dt.date().isoformat():sunrise_time}
+        except:
+            LED_SUN_RISE = None
+    before_sunrise = dt.hour < night_time[1] if LED_SUN_RISE is None else dt<LED_SUN_RISE[dt.date().isoformat()]
+    bNight = (night_time[0]<night_time[1] and night_time[0] <= dt.hour and before_sunrise) or (night_time[0]>night_time[1] and (night_time[0] <= dt.hour or before_sunrise))
     if bNight and LED_CURR_BRIGHTNESS!=LED_NIGHT_BRIGHTNESS:
         if DEBUG_VERBOSE:
             print("Night Brightness")
@@ -203,7 +221,7 @@ def main(wdt_pipe):
     gc.collect()
     while True:
         wait_time = ut.WAIT_TIME
-        check_brightness(config.get("display_time_night"))
+        check_brightness(config.get("display_time_night"),config['geo_loc'])
         findex,fshort,req_success = ut.get_flights(requests,config['geo_loc'],config.get('altitude'),config.get('heading'),
             config.get('center_loc'),config.get('dest'),config.get('speed'),DEBUG_VERBOSE=DEBUG_VERBOSE)
         if req_success:
