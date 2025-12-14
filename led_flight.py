@@ -5,7 +5,7 @@ import plane_icon as pi
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-DEBUG_VERBOSE=True #0: no print out; 1: important; 2: everything
+DEBUG_VERBOSE=False #0: no print out; 1: important; 2: everything
 TZ = ZoneInfo('America/Los_Angeles')
 TIMEOUT=60
 LED_CURR_BRIGHTNESS=500
