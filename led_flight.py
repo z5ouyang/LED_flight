@@ -138,11 +138,12 @@ def plane_animation_old():
 
 def plane_animation(heading=None):
     heading = 270 if heading is None or heading=='NA' else heading
-    print("heading:",heading)
+    heading = (360 - heading)%360 if FLIP_EAST_WEST else heading
+    #print("heading:",heading)
     if heading<180:
-        ml.create_img_program(PLANE_CANVAS,2,0,0,2,0,2)
+        ml.create_img_program(PLANE_CANVAS,3,0,0,3,0,1)
     else:
-        ml.create_img_program(PLANE_CANVAS,1,0,0,3,0,1)
+        ml.create_img_program(PLANE_CANVAS,2,0,0,2,0,2)
     time.sleep(2)
 
 def display_alt_sp(fInfo):
@@ -167,7 +168,7 @@ def show_flight(flight_info):
     ml.delete_programe(SHORT_CANVAS)
     ml.delete_programe(LONG_CANVAS)
     ml.clear_screen()
-    plane_animation(flight_info['heading'])
+    plane_animation(int(flight_info['heading']))
     labels_s = [flight_info['flight_number'],flight_info['airports_short'],flight_info['aircraft_code']]
     labels_l = [flight_info['airline_name'],flight_info['airports_long'],flight_info['aircraft_model']]
     ml.create_txt_programe(SHORT_CANVAS,'F0F',4,5,200,4,50,'\n'.join(labels_s),multiline=True,font=4)
