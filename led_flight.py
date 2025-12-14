@@ -138,6 +138,7 @@ def plane_animation_old():
 
 def plane_animation(heading=None):
     heading = 270 if heading is None or heading=='NA' else heading
+    print("heading:",heading)
     if heading<180:
         ml.create_img_program(PLANE_CANVAS,2,0,0,2,0,2)
     else:
