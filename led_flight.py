@@ -144,7 +144,7 @@ def plane_animation(heading=None):
         ml.create_img_program(PLANE_CANVAS,3,0,0,3,0,1)
     else:
         ml.create_img_program(PLANE_CANVAS,2,0,0,2,0,2)
-    time.sleep(5)
+    time.sleep(4)
     ml.delete_programe(PLANE_CANVAS)
 
 def display_alt_sp(fInfo):
