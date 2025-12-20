@@ -8,6 +8,7 @@ import adafruit_requests
 import adafruit_display_text.label
 from digitalio import DigitalInOut
 from microcontroller import watchdog as w
+import microcontroller as mc
 from watchdog import WatchDogMode
 
 DEBUG_VERBOSE=False
@@ -31,6 +32,8 @@ TEXT_SPEED=0.04
 # Git sync not called due to write-only system
 GIT_COMMIT={'code.py':'','utility.py':'','plane_icon.py':''}
 GIT_DATE=''
+# Restarted Date
+RESTART_DATE=0
 
 def git_sync():
     global GIT_COMMIT
@@ -87,6 +90,7 @@ def check_wifi(matrixportal):
 
 def update_sys_time(tz,matrixportal):#tz='America/Los_Angeles'
     #not reliable: https://worldtimeapi.org/api/timezone/
+    global RESTART_DATE
     labels = ["TIME ZONE","ERROR",'Use UTC']
     offset = None
     if tz is not None:
@@ -97,14 +101,22 @@ def update_sys_time(tz,matrixportal):#tz='America/Los_Angeles'
     else:
         labels = ["TIME ZONE","",tz_name]
     rtc.RTC().datetime = adafruit_ntp.NTP(SOCKET, tz_offset=offset).datetime
+    now = time.localtime()
+    RESTART_DATE = now.tm_mday
     matrixportal.display.root_group = get_text(labels)
     time.sleep(5)
 
 def display_date_time(time_within,matrixportal):
     if time_within is None:
         return
+    global RESTART_DATE
     led_color = [0x996600]
     now = time.localtime()
+    ## restart every 3 days at 2~3am 
+    if now.tm_hour<3 and now.tm_hour>2 & (now.tm_yday-RESTART_DATE)%365>3:
+        RESTART_DATE = now.tm_yday
+        mc.reset()
+    ####
     if time_within[0]<time_within[1]:
         if time_within[0] <= now.tm_hour < time_within[1]:
             led_color = [0x100800]
