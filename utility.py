@@ -22,10 +22,11 @@ def get_config():
         config = json.load(f)
     return config
 
-def bool_between(v,r):
-    if r is None:
-        return True
-    return (v>r[0] and v<r[1])
+def is_between(v,r):
+    s, l = r
+    if s>l:
+        s, l = l, s
+    return s <= v <= l
 
 def get_request_response(requests,url,DEBUG_VERBOSE=False):
     try:       
@@ -60,7 +61,67 @@ def get_est_arrival(eta):
         return 5
     return min(WAIT_TIME_MAX,max(5,int(eta-time.time()-50)))
 
-def get_flights(requests,geoloc,altitude=None,heading=None,center_geoloc=None,dest=None,speed=None,DEBUG_VERBOSE=False):
+# geoloc not across 180 longitude
+def is_in_dynamic_altitude(fInfo,geoloc,altitude,threshold_rate=0.2):
+    h = fInfo[3]
+    tl_lat,br_lat,tl_lon,br_lon = geoloc
+    span_lat = abs(tl_lat-br_lat)
+    span_lon = abs(tl_lon-br_lon)
+    if 45<= h < 135: # east
+        progress = (fInfo[2]-tl_lon)/span_lon
+    elif 135 <= h < 225: # south
+        progress = abs(tl_lat - fInfo[1])/span_lat
+    elif 225<= h < 315: # west
+        progress = (br_lon-fInfo[2])/span_lon
+    else: # north
+        progress = (fInfo[1] - br_lat)/span_lat
+    expected_altitude = altitude[0] + progress * (altitude[1]-altitude[0])
+    print(progress,expected_altitude,abs(fInfo[4] - expected_altitude),expected_altitude*threshold_rate)
+    return (abs(fInfo[4] - expected_altitude))<=(expected_altitude*threshold_rate)#,progress,(altitude[0]+progress * (altitude[1]-altitude[0]))
+
+def is_in_altitude(fInfo,geoloc,altitude,altitude_rev,threshold_rate=0.2):
+    if altitude is None and altitude_rev is None:
+        return True
+    for one in [altitude,altitude_rev]:
+        if one is not None and is_in_dynamic_altitude(fInfo,geoloc,one,threshold_rate):
+            return True
+    return False
+
+def is_in_heading(fheading,heading,heading_rev):
+    if heading is None and heading_rev is None:
+        return True,None
+    for one in [heading,heading_rev]:
+        if one is not None and is_between(fheading,one):
+            return True,one
+    return False,None
+
+def is_in_region(fInfo,geoloc,altitude,heading,speed,altitude_rev,heading_rev):
+    if speed is not None and not is_between(fInfo[5],speed):
+        return False
+    b_heading,h = is_in_heading(fInfo[3],heading,heading_rev)
+    if not b_heading:
+        return False
+    if h is None:
+        return is_in_altitude(fInfo,geoloc,altitude,altitude_rev)
+    if h==heading:
+        return is_in_dynamic_altitude(fInfo,geoloc,altitude)
+    if h==heading_rev:
+        return is_in_dynamic_altitude(fInfo,geoloc,altitude_rev)
+    return False
+
+#v = ['AA',32.72,-117.105,106,3000,135]
+#is_in_region(v,geoloc,altitude,heading,speed,altitude_rev,heading_rev) 
+
+
+def get_flights(requests,geoloc,rInfo,DEBUG_VERBOSE=False):
+    altitude=rInfo.get('altitude')
+    heading=rInfo.get('heading')
+    speed=rInfo.get('speed')
+    altitude_rev = rInfo.get("altitude_rev")
+    heading_rev = rInfo.get('heading_rev')
+    center_geoloc=rInfo.get('center_loc')
+    dest=rInfo.get('dest')
+    
     url = FLIGHT_SEARCH_HEAD+"bounds="+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
     flight=get_request_response(requests,url,DEBUG_VERBOSE)
     if DEBUG_VERBOSE:
@@ -75,7 +136,7 @@ def get_flights(requests,geoloc,altitude=None,heading=None,center_geoloc=None,de
         #    '17':'Possibly squawk code or status flag','18':'Airline ICAO code (United Airlines)']
         heading_rev = None if heading is None else [(_+180)%360 for _ in heading]
         for k,v in flight.items():
-            if isinstance(v,list) and len(v)>13 and bool_between(v[4],altitude) and bool_between(v[5],speed) and (bool_between(v[3],heading) or bool_between(v[3],heading_rev)) and (dest is None or v[12]=='' or dest==v[12]):
+            if isinstance(v,list) and len(v)>13 and is_in_region(v,geoloc,altitude,heading,speed,altitude_rev,heading_rev) and (dest is None or v[12]=='' or dest==v[12]):
                flight_dist[k] = get_distance(center_geoloc,v[1:3])
                flight_short[k] = {FLIGHT_SHORT_KEYS[i]:v[i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(v)))}#    {'heading':v[3],'altitude':v[4]}
     flight_index = None if len(flight_dist)==0 else min(flight_dist, key=flight_dist.get)

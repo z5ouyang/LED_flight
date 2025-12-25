@@ -225,8 +225,7 @@ def main(wdt_pipe):
     while True:
         wait_time = ut.WAIT_TIME
         check_brightness(config.get("display_time_night"),config['geo_loc'])
-        findex,fshort,req_success = ut.get_flights(requests,config['geo_loc'],config.get('altitude'),config.get('heading'),
-            config.get('center_loc'),config.get('dest'),config.get('speed'),DEBUG_VERBOSE=DEBUG_VERBOSE)
+        findex,fshort,req_success = ut.get_flights(requests,config['geo_loc'],config,DEBUG_VERBOSE=DEBUG_VERBOSE)
         if req_success:
             wdt_pipe.send("feed")
         ## follow the previous plane when it moved outside the boundary but no new plane entered

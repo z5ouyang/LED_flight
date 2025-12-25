@@ -235,8 +235,7 @@ def main():
     gc.collect()
     while True:
         wait_time = ut.WAIT_TIME
-        findex,fshort,req_success = ut.get_flights(REQUESTS,config['geo_loc'],config.get('altitude'),config.get('heading'),
-            config.get('center_loc'),config.get('dest'),config.get('speed'),DEBUG_VERBOSE=DEBUG_VERBOSE)
+        findex,fshort,req_success = ut.get_flights(REQUESTS,config['geo_loc'],config,DEBUG_VERBOSE=DEBUG_VERBOSE)
         if req_success:
             w.feed()
         ## follow the previous plane when it moved outside the boundary but no new plane entered
