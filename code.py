@@ -4,6 +4,7 @@ import plane_icon as pi
 from random import randrange
 from adafruit_matrixportal.matrixportal import MatrixPortal
 from adafruit_portalbase.network import HttpError
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_requests
 import adafruit_display_text.label
 from digitalio import DigitalInOut
@@ -20,6 +21,12 @@ FONT=terminalio.FONT
 # limited sockets so global:
 SOCKET = socketpool.SocketPool(wifi.radio)
 REQUESTS = adafruit_requests.Session(SOCKET, ssl.create_default_context())
+LOG = MQTT.MQTT(broker=os.getenv("MQTT_BROKER_IP"), port=os.getenv("MQTT_BROKER_PORT"), socket_pool=SOCKET)
+LOG.connect()
+LOG_N=60
+MQTT_RECONNECTS=0
+MQTT_ERRORS=0
+
 # Colours and timings
 TEXT_COLOR=[0x440844,0x0040B0,0xFFBF00]#;g = get_text(labels_s);matrixportal.display.root_group = g
 PLANE_COLOUR=0x4B0082
@@ -33,7 +40,7 @@ TEXT_SPEED=0.04
 GIT_COMMIT={'code.py':'','utility.py':'','plane_icon.py':''}
 GIT_DATE=''
 # Restarted Date
-RESTART_DATE=0
+#RESTART_DATE=0
 
 def git_sync():
     global GIT_COMMIT
@@ -59,6 +66,8 @@ def git_sync():
             if DEBUG_VERBOSE:
                 print("GITHUB error for",f)
                 print(''.join(traceback.format_exception(None, e, e.__traceback__)))
+            else:
+                log("GITHUB error for",f)
 
 def get_matrix_portal():
     status_light = neopixel.NeoPixel(
@@ -71,6 +80,19 @@ def get_matrix_portal():
         bit_depth=6
     )
     return matrixportal
+
+def log(msg):
+    global MQTT_ERRORS
+    try:
+        LOG.publish("logs/matrixportal", msg)
+    except Exception as e:
+        MQTT_ERRORS += 1
+
+def mqtt_disconnect(client, userdata, rc): 
+    global MQTT_RECONNECTS 
+    MQTT_RECONNECTS += 1
+
+MQTT.on_disconnect = mqtt_disconnect
 
 def check_wifi(matrixportal):
     ping_ip = ipaddress.IPv4Address("8.8.8.8")  # Google's DNS
@@ -90,7 +112,7 @@ def check_wifi(matrixportal):
 
 def update_sys_time(tz,matrixportal):#tz='America/Los_Angeles'
     #not reliable: https://worldtimeapi.org/api/timezone/
-    global RESTART_DATE
+    #global RESTART_DATE
     labels = ["TIME ZONE","ERROR",'Use UTC']
     offset = None
     if tz is not None:
@@ -102,20 +124,22 @@ def update_sys_time(tz,matrixportal):#tz='America/Los_Angeles'
         labels = ["TIME ZONE","",tz_name]
     rtc.RTC().datetime = adafruit_ntp.NTP(SOCKET, tz_offset=offset).datetime
     now = time.localtime()
-    RESTART_DATE = now.tm_mday
+    #RESTART_DATE = now.tm_mday
     matrixportal.display.root_group = get_text(labels)
     time.sleep(5)
 
 def display_date_time(time_within,matrixportal):
     if time_within is None:
         return
-    global RESTART_DATE
+    #global RESTART_DATE
     led_color = [0x996600]
     now = time.localtime()
     ## restart every 3 days at 2~3am 
-    if now.tm_hour<3 and now.tm_hour>2 & (now.tm_yday-RESTART_DATE)%365>3:
-        RESTART_DATE = now.tm_yday
-        mc.reset()
+    #if now.tm_hour<3 and now.tm_hour>2 & (now.tm_yday-RESTART_DATE)%365>3:
+    #    if not DEBUG_VERBOSE:
+    #        log('RESTART!')
+    #    RESTART_DATE = now.tm_yday
+    #    mc.reset()
     ####
     if time_within[0]<time_within[1]:
         if time_within[0] <= now.tm_hour < time_within[1]:
@@ -205,6 +229,8 @@ def show_flight(flight_info,matrixportal,planeG):
     if DEBUG_VERBOSE:
         now = time.localtime()
         print(f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}",flight_info)
+    else:
+        log(json.dumps(flight_info))
     plane_animation(matrixportal,planeG)
     display_flight(flight_info,matrixportal)
 
@@ -212,6 +238,8 @@ def clear_flight(flight_index,matrixportal):
     if DEBUG_VERBOSE:
         now = time.localtime()
         print(f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","Clear")
+    else:
+        log("Clear flight")
     flight = ut.get_flight_short(REQUESTS,flight_index,DEBUG_VERBOSE=DEBUG_VERBOSE)
     if flight is not None and flight['altitude']<ut.LANDING_ALTITUDE:
         labels = ["Landed","",str(flight["speed"])+' kts']
@@ -223,6 +251,7 @@ def clear_flight(flight_index,matrixportal):
     #displayio.release_displays()
 
 def main():
+    log(f"Reset reason: {mc.cpu.reset_reason}")
     mp = get_matrix_portal()
     if not check_wifi(mp):
         return
@@ -233,11 +262,14 @@ def main():
     finfo=None
     flight_followed=ut.MAX_FOLLOW_PLAN
     gc.collect()
+    log_n = 0
     while True:
+        start_loop = time.monotonic()
         wait_time = ut.WAIT_TIME
         findex,fshort,req_success = ut.get_flights(REQUESTS,config['geo_loc'],config,DEBUG_VERBOSE=DEBUG_VERBOSE)
         if req_success:
             w.feed()
+            log('Watch dog feed!')
         ## follow the previous plane when it moved outside the boundary but no new plane entered
         if findex is None and findex_old is not None and flight_followed>0:
             if DEBUG_VERBOSE:
@@ -271,14 +303,24 @@ def main():
         gc.collect()
         if DEBUG_VERBOSE:
             print("  Free:", gc.mem_free(), "bytes","  Allocated:", gc.mem_alloc(), "bytes")
+        else:
+            log(f'Main loop: {(time.monotonic()-start_loop)*1000}ms')
+            if log_n==0:
+                log(f"Free: {gc.mem_free()} bytes\tAllocated: {gc.mem_alloc()} bytes")
+                log(f"WIFI connection: {wifi.radio.connected}\tSSID: {wifi.radio.ap_info.ssid}")     
+                log(f"MQTT connection: {MQTT_RECONNECTS}\terror: {MQTT_ERRORS}")           
+                log_n=LOG_N
 
 try:
     main()
 except Exception as e:
-    error_text = ''.join(traceback.format_exception(None, e, e.__traceback__))
-    now = time.localtime()
-    print("========",f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","========\n")
-    print(error_text)
+    log("EXCEPTION: " + repr(e))
+    mc.reset()
+    #error_text = ''.join(traceback.format_exception(None, e, e.__traceback__))
+    #now = time.localtime()
+    #print("========",f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","========\n")
+    #print(error_text)
 
 #time.sleep(300)
 #the Matrix Portal S3 running CircuitPython 9.x
+
