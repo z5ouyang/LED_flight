@@ -126,7 +126,7 @@ def get_flights(requests,geoloc,rInfo,DEBUG_VERBOSE=False):
     heading_rev = rInfo.get('heading_rev')
     center_geoloc=rInfo.get('center_loc')
     dest=rInfo.get('dest')
-    
+    # https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=32.74,32.70,-117.17,-117.10&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1
     url = FLIGHT_SEARCH_HEAD+"bounds="+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
     flight=get_request_response(requests,url,DEBUG_VERBOSE)
     if DEBUG_VERBOSE:
@@ -156,12 +156,12 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
     if flight is not None:
         ori_iata = get_dict_value(flight,['airport','origin','code','iata'])
         ori_city = get_dict_value(flight,['airport','origin','position','region','city'])
-        if ori_iata=='NA' or ori_city=='NA':
+        if (ori_iata=='NA' or ori_city=='NA') and is_ori_trail(get_dict_value(flight,['trail'])):
             ori_iata,ori_city = get_iata_loc(get_dict_value(flight,['trail',-1]),ori_iata,ori_city)
         dest_iata = get_dict_value(flight,['airport','destination','code','iata'])
         dest_city = get_dict_value(flight,['airport','destination','position','region','city'])
-        if (dest_iata=='NA' or dest_city=='NA') and len(get_dict_value(flight,['trail']))>20 and get_dict_value(flight,['trail',0,'alt'])<5000:
-            dest_iata,dest_city = get_iata_loc(get_dict_value(flight,['trail',0]),dest_iata,dest_city)
+        if (dest_iata=='NA' or dest_city=='NA') and is_dest_trails(get_dict_value(flight,['trail'])):
+            dest_iata,dest_city = get_iata_loc(estimate_dest_trails(get_dict_value(flight,['trail'])),dest_iata,dest_city)
         flight_details={
                 'flight_index':flight_index,
                 'flight_number': (get_dict_value(flight,['identification','number','default']) 
@@ -193,8 +193,8 @@ def get_flight_short(requests,flight_index,DEBUG_VERBOSE=False):
     if not flight_index in flight.keys():
         return None
     flight_details = {FLIGHT_SHORT_KEYS[i]:flight[flight_index][i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(flight[flight_index])))}
-    if FLIGHT_DETAILS_LATEST is not None and FLIGHT_DETAILS_LATEST['flight_index'] ==flight_index:
-        flight_details.update(FLIGHT_DETAILS_LATEST)
+    if FLIGHT_DETAILS_LATEST is not None and FLIGHT_DETAILS_LATEST['flight_index'] == flight_index:
+        flight_details.update({k:v for k,v in FLIGHT_DETAILS_LATEST.items() if k in ['flight_number','ori','dest']})
     return flight_details #{FLIGHT_SHORT_KEYS[i]:flight[flight_index][i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(flight[flight_index])))}
 
 def get_time_zone_offset(requests,tz,DEBUG_VERBOSE):
@@ -213,3 +213,29 @@ def get_iata_loc(trail,iata,city):
     if airport_info is not None:
         lat,lng,iata,city = airport_info
     return iata,city
+
+def is_ori_trail(trails,tolerance=0.9):
+    takeoff_index = min(len(trails),200)
+    takeoff_alt = sum(1 for i in range(len(trails)-takeoff_index,len(trails)) if trails[i-1]['alt'] >= trails[i]['alt'])
+    return takeoff_alt/takeoff_index > tolerance
+
+def is_dest_trails(trails,tolerance=0.9):
+    landing_index = min(len(trails)-1,200)
+    landing_alt = sum(1 for i in range(landing_index) if trails[i]['alt'] <= trails[i+1]['alt'])
+    return landing_alt/landing_index > tolerance
+
+def estimate_dest_trails(trails,last_points=10):
+    pred_trail = trails[0].copy()
+    if pred_trail['alt']>2000:
+        return pred_trail
+    alt_sp = sum([(trails[i+1]['alt']-trails[i]['alt'])/(trails[i]['ts']-trails[i+1]['ts']) for i in range(last_points)])/last_points
+    ts = pred_trail['alt']/alt_sp/2 # estimate decendent 2 times faster
+    lat_diff = [trails[i]['lat']-trails[i+1]['lat'] for i in range(last_points)]
+    lng_diff = [trails[i]['lng']-trails[i+1]['lng'] for i in range(last_points)]
+    #'%.4f,%.4f'%(pred_trail['lat']+ts*sum(lat_diff)/last_points,pred_trail['lng']+ts*sum(lng_diff)/last_points)
+    pred_trail.update({
+        'lat':pred_trail['lat']+ts*sum(lat_diff)/last_points,
+        'lng':pred_trail['lng']+ts*sum(lng_diff)/last_points,
+    })
+    print('%.4f,%.4f'%(pred_trail['lat'],pred_trail['lng']))
+    return pred_trail
