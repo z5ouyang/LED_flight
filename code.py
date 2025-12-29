@@ -21,11 +21,16 @@ FONT=terminalio.FONT
 # limited sockets so global:
 SOCKET = socketpool.SocketPool(wifi.radio)
 REQUESTS = adafruit_requests.Session(SOCKET, ssl.create_default_context())
-LOG = MQTT.MQTT(broker=os.getenv("MQTT_BROKER_IP"), port=os.getenv("MQTT_BROKER_PORT"), socket_pool=SOCKET)
-LOG.connect()
 LOG_N=60
 MQTT_RECONNECTS=0
 MQTT_ERRORS=0
+try:
+    if os.getenv("MQTT_BROKER_IP") is not None and os.getenv("MQTT_BROKER_PORT") is not None:
+        MQTT_LOG = MQTT.MQTT(broker=os.getenv("MQTT_BROKER_IP"), port=os.getenv("MQTT_BROKER_PORT"), socket_pool=SOCKET)
+        MQTT_LOG.connect()
+except Exception as e:
+    if "MQTT_LOG" in globals():
+        del MQTT_LOG
 
 # Colours and timings
 TEXT_COLOR=[0x440844,0x0040B0,0xFFBF00]#;g = get_text(labels_s);matrixportal.display.root_group = g
@@ -82,11 +87,15 @@ def get_matrix_portal():
     return matrixportal
 
 def log(msg):
+    if not "MQTT_LOG" in globals():
+        return
     global MQTT_ERRORS
     try:
-        LOG.publish("logs/matrixportal", msg)
+        MQTT_LOG.publish("logs/matrixportal", msg)
     except Exception as e:
+        print(e)
         MQTT_ERRORS += 1
+        MQTT_LOG.connect()
 
 def mqtt_disconnect(client, userdata, rc): 
     global MQTT_RECONNECTS 
@@ -310,6 +319,7 @@ def main():
                 log(f"WIFI connection: {wifi.radio.connected}\tSSID: {wifi.radio.ap_info.ssid}")     
                 log(f"MQTT connection: {MQTT_RECONNECTS}\terror: {MQTT_ERRORS}")           
                 log_n=LOG_N
+            log_n -= 1
 
 try:
     main()

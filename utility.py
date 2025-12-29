@@ -1,4 +1,6 @@
 import json,traceback,gc,time,math,os,re
+import kdnode as kd
+kd.init_iata_info()
 
 WAIT_TIME=15
 UPDATE_TIME=5
@@ -16,6 +18,9 @@ HTTP_HEADERS = {
 FLIGHT_SHORT_KEYS = ['ICAO_aircraft','latitude','logitude','heading','altitude','speed','squawk','radar','aircraft_type','aircraft_reg','timestamp',
         'ori','dest','flight_number','vertical_speed','squawk_status','callsign','ADS_B','ICAO_airline']
 TIME_ZONE_SEARCH_HEAD="https://api.timezonedb.com/v2.1/get-time-zone?key=APIKEY&format=json&by=zone&zone="
+IATA_INFO=None
+FLIGHT_DETAILS_LATEST=None
+
 
 def get_config():
     with open('private.json') as f:
@@ -143,27 +148,41 @@ def get_flights(requests,geoloc,rInfo,DEBUG_VERBOSE=False):
     return flight_index,None if flight_index is None else flight_short[flight_index],flight is not None and len(flight)>0 # return a flag meaning the requests were successful
 
 def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
+    global FLIGHT_DETAILS_LATEST
     if DEBUG_VERBOSE:
         print("flight_index: ",flight_index)
     flight_details=None
     flight=get_request_response(requests,FLIGHT_LONG_DETAILS_HEAD+flight_index,DEBUG_VERBOSE)
     if flight is not None:
-            flight_details={
+        ori_iata = get_dict_value(flight,['airport','origin','code','iata'])
+        ori_city = get_dict_value(flight,['airport','origin','position','region','city'])
+        if ori_iata=='NA' or ori_city=='NA':
+            ori_iata,ori_city = get_iata_loc(get_dict_value(flight,['trail',-1]),ori_iata,ori_city)
+        dest_iata = get_dict_value(flight,['airport','destination','code','iata'])
+        dest_city = get_dict_value(flight,['airport','destination','position','region','city'])
+        if (dest_iata=='NA' or dest_city=='NA') and len(get_dict_value(flight,['trail']))>20 and get_dict_value(flight,['trail',0,'alt'])<5000:
+            dest_iata,dest_city = get_iata_loc(get_dict_value(flight,['trail',0]),dest_iata,dest_city)
+        flight_details={
                 'flight_index':flight_index,
-                'flight_number': get_dict_value(flight,['identification','number','default']),
+                'flight_number': (get_dict_value(flight,['identification','number','default']) 
+                    if get_dict_value(flight,['identification','number','default'])!='NA'
+                    else get_dict_value(flight,['identification','callsign'])),
                 'airline_name': get_dict_value(flight,['airline','name']),
-                'airports_short': get_dict_value(flight,['airport','origin','code','iata']) +"-" + get_dict_value(flight,['airport','destination','code','iata']),
-                'airports_long': get_dict_value(flight,['airport','origin','position','region','city']) +"-" + get_dict_value(flight,['airport','destination','position','region','city']),
+                'airports_short': ori_iata + "-" + dest_iata,
+                'airports_long': ori_city +"-" + dest_city,
                 'aircraft_code': get_dict_value(flight,['aircraft','model','code']),
                 'aircraft_model': get_dict_value(flight,['aircraft','model','text']),
                 'status': get_dict_value(flight,['status','text']),
                 'altitude': get_dict_value(flight,['trail',0,'alt']),
                 'heading': get_dict_value(flight,['trail',0,'hd']),
                 'speed': get_dict_value(flight,['trail',0,'spd']),
-                'eta': get_dict_value(flight,['time','estimated','arrival'])
-            }
-            flight_details['flight_number'] = flight_details['flight_number'] if not flight_details['flight_number']=='NA' else flight_details['airline_name']
-            flight_details['airports_short'] = re.sub('NA','',flight_details['airports_short'])
+                'eta': get_dict_value(flight,['time','estimated','arrival']),
+                'ori': ori_iata,
+                'dest': dest_iata
+        }
+        flight_details['flight_number'] = flight_details['flight_number'] if not flight_details['flight_number']=='NA' else flight_details['airline_name']
+        flight_details['airports_short'] = re.sub('NA','',flight_details['airports_short'])
+    FLIGHT_DETAILS_LATEST = flight_details
     return flight_details
 
 def get_flight_short(requests,flight_index,DEBUG_VERBOSE=False):
@@ -173,7 +192,10 @@ def get_flight_short(requests,flight_index,DEBUG_VERBOSE=False):
     flight=get_request_response(requests,url,DEBUG_VERBOSE)
     if not flight_index in flight.keys():
         return None
-    return {FLIGHT_SHORT_KEYS[i]:flight[flight_index][i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(flight[flight_index])))}
+    flight_details = {FLIGHT_SHORT_KEYS[i]:flight[flight_index][i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(flight[flight_index])))}
+    if FLIGHT_DETAILS_LATEST is not None and FLIGHT_DETAILS_LATEST['flight_index'] ==flight_index:
+        flight_details.update(FLIGHT_DETAILS_LATEST)
+    return flight_details #{FLIGHT_SHORT_KEYS[i]:flight[flight_index][i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(flight[flight_index])))}
 
 def get_time_zone_offset(requests,tz,DEBUG_VERBOSE):
     url=re.sub('APIKEY',os.getenv("TIMEZONEDB_API_KEY"),TIME_ZONE_SEARCH_HEAD)+tz
@@ -186,3 +208,8 @@ def closest_heading(angle):
     compass_points = [0, 45, 90, 135, 180, 225, 270, 315]
     return min(compass_points, key=lambda x: abs((angle - x + 180) % 360 - 180))
 
+def get_iata_loc(trail,iata,city):
+    airport_info = kd.nearest(kd.IATA_INFO,(trail['lat'],trail['lng']))
+    if airport_info is not None:
+        lat,lng,iata,city = airport_info
+    return iata,city
