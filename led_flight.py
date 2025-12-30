@@ -1,4 +1,4 @@
-import os, subprocess,requests,time,gc,sys,multiprocessing
+import os, subprocess,requests,time,gc,sys,multiprocessing,traceback
 import utility as ut
 import modbus_led as ml
 import plane_icon as pi
@@ -276,6 +276,13 @@ def watchdog(timeout, child_process, wdt_pipe):
             restart_program()
             sys.exit()
         time.sleep(1)
+
+def main_try(wdt_pipe):
+    try:
+        main(wdt_pipe)
+    except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
+        raise
 
 def restart_program():
     python = sys.executable

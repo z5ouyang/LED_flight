@@ -159,11 +159,21 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
         ori_iata = get_dict_value(flight,['airport','origin','code','iata'])
         ori_city = get_dict_value(flight,['airport','origin','position','region','city'])
         if (ori_iata=='NA' or ori_city=='NA') and is_ori_trail(get_dict_value(flight,['trail'])):
-            ori_iata,ori_city = get_iata_loc(get_dict_value(flight,['trail',-1]),ori_iata,ori_city)
+            try:
+                ori_iata,ori_city = get_iata_loc(get_dict_value(flight,['trail',-1]),ori_iata,ori_city)
+            except Exception as e:
+                if DEBUG_VERBOSE:
+                    print("Error: get_iata_loc ori")
+                    print(e)
         dest_iata = get_dict_value(flight,['airport','destination','code','iata'])
         dest_city = get_dict_value(flight,['airport','destination','position','region','city'])
         if (dest_iata=='NA' or dest_city=='NA') and is_dest_trails(get_dict_value(flight,['trail'])):
-            dest_iata,dest_city = get_iata_loc(estimate_dest_trails(get_dict_value(flight,['trail'])),dest_iata,dest_city)
+            try:
+                dest_iata,dest_city = get_iata_loc(estimate_dest_trails(get_dict_value(flight,['trail'])),dest_iata,dest_city)
+            except Exception as e:
+                if DEBUG_VERBOSE:
+                    print("Error: get_iata_loc dest")
+                    print(e)         
         flight_details={
                 'flight_index':flight_index,
                 'flight_number': (get_dict_value(flight,['identification','number','default']) 

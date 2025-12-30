@@ -73,6 +73,7 @@ def git_sync():
                 print(''.join(traceback.format_exception(None, e, e.__traceback__)))
             else:
                 log("GITHUB error for",f)
+                log(''.join(traceback.format_exception(None, e, e.__traceback__)))
 
 def get_matrix_portal():
     status_light = neopixel.NeoPixel(
@@ -93,9 +94,13 @@ def log(msg):
     try:
         MQTT_LOG.publish("logs/matrixportal", msg)
     except Exception as e:
-        print(e)
         MQTT_ERRORS += 1
-        MQTT_LOG.connect()
+        try:
+            MQTT_LOG.connect()
+            log(''.join(traceback.format_exception(None, e, e.__traceback__)))
+        except  Exception as e1:
+            raise raise ConnectionError("Failed to connect to MQTT server")
+
 
 def mqtt_disconnect(client, userdata, rc): 
     global MQTT_RECONNECTS 
@@ -324,7 +329,8 @@ def main():
 try:
     main()
 except Exception as e:
-    log("EXCEPTION: " + repr(e))
+    log("EXCEPTION: ")
+    log(''.join(traceback.format_exception(None, e, e.__traceback__)))
     mc.reset()
     #error_text = ''.join(traceback.format_exception(None, e, e.__traceback__))
     #now = time.localtime()
