@@ -1,4 +1,4 @@
-import os, subprocess,requests,time,gc,sys,multiprocessing,traceback
+import os, subprocess,requests,time,gc,sys,multiprocessing,traceback,tracemalloc
 import utility as ut
 import modbus_led as ml
 import plane_icon as pi
@@ -214,7 +214,7 @@ def init(config):
         return False
     return True
 
-def main(wdt_pipe):
+def main(wdt_pipe):    
     config = ut.get_config()
     if not init(config):
         return
@@ -223,6 +223,7 @@ def main(wdt_pipe):
     flight_followed=ut.MAX_FOLLOW_PLAN
     gc.collect()
     while True:
+        tracemalloc.start()
         wait_time = ut.WAIT_TIME
         check_brightness(config.get("display_time_night"),config['geo_loc'])
         findex,fshort,req_success = ut.get_flights(requests,config['geo_loc'],config,DEBUG_VERBOSE=DEBUG_VERBOSE)
@@ -259,7 +260,8 @@ def main(wdt_pipe):
             display_date_time()
         time.sleep(wait_time)
         gc.collect()
-        print(datetime.now(TZ),f"Free: {gc.mem_free()} bytes\tAllocated: {gc.mem_alloc()} bytes")
+        current, peak = tracemalloc.get_traced_memory()
+        print(datetime.now(TZ),f"Current: {current} bytes\tPeak: {peak} bytes")
 
 def watchdog(timeout, child_process, wdt_pipe):
     last_feed = time.time()
