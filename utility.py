@@ -81,7 +81,7 @@ def is_in_dynamic_altitude(fInfo,geoloc,altitude,threshold_rate=0.2):
     else: # north
         progress = (fInfo[1] - br_lat)/span_lat
     expected_altitude = altitude[0] + progress * (altitude[1]-altitude[0])
-    print(progress,expected_altitude,abs(fInfo[4] - expected_altitude),expected_altitude*threshold_rate)
+    #print(progress,expected_altitude,abs(fInfo[4] - expected_altitude),expected_altitude*threshold_rate)
     return (abs(fInfo[4] - expected_altitude))<=(expected_altitude*threshold_rate)#,progress,(altitude[0]+progress * (altitude[1]-altitude[0]))
 
 def is_in_altitude(fInfo,geoloc,altitude,altitude_rev,threshold_rate=0.2):
@@ -254,5 +254,5 @@ def estimate_dest_trails(trails,last_points=10):
         'lat':pred_trail['lat']+ts*sum(lat_diff)/last_points,
         'lng':pred_trail['lng']+ts*sum(lng_diff)/last_points,
     })
-    print('%.4f,%.4f'%(pred_trail['lat'],pred_trail['lng']))
+    #print('%.4f,%.4f'%(pred_trail['lat'],pred_trail['lng']))
     return pred_trail

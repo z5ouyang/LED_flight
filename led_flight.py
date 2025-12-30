@@ -259,8 +259,7 @@ def main(wdt_pipe):
             display_date_time()
         time.sleep(wait_time)
         gc.collect()
-        #if DEBUG_VERBOSE:
-        #    print("  Free:", gc.mem_free(), "bytes","  Allocated:", gc.mem_alloc(), "bytes")
+        print(datetime.now(TZ),f"Free: {gc.mem_free()} bytes\tAllocated: {gc.mem_alloc()} bytes")
 
 def watchdog(timeout, child_process, wdt_pipe):
     last_feed = time.time()
