@@ -139,12 +139,14 @@ def get_flights(requests,geoloc,rInfo,DEBUG_VERBOSE=False):
         #    '9':'Registration number','10':'Timestamp (Unix epoch)','11':'Departure airport (San Francisco Intl)','12':'Arrival airport (San Diego Intl)',
         #    '13':'Flight number','14':'Possibly on-ground status (0 = airborne)','15':'Vertical speed (feet/min)','16':'Callsign',
         #    '17':'Possibly squawk code or status flag','18':'Airline ICAO code (United Airlines)']
-        heading_rev = None if heading is None else [(_+180)%360 for _ in heading]
+        #heading_rev = None if heading is None else [(_+180)%360 for _ in heading]
         for k,v in flight.items():
             if isinstance(v,list) and len(v)>13 and is_in_region(v,geoloc,altitude,heading,speed,altitude_rev,heading_rev) and (dest is None or v[12]=='' or dest==v[12]):
                flight_dist[k] = get_distance(center_geoloc,v[1:3])
                flight_short[k] = {FLIGHT_SHORT_KEYS[i]:v[i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(v)))}#    {'heading':v[3],'altitude':v[4]}
     flight_index = None if len(flight_dist)==0 else min(flight_dist, key=flight_dist.get)
+    if FLIGHT_DETAILS_LATEST is not None and FLIGHT_DETAILS_LATEST['flight_index'] == flight_index:
+        flight_short[flight_index].update({k:v for k,v in FLIGHT_DETAILS_LATEST.items() if k in ['flight_number','ori','dest']})
     return flight_index,None if flight_index is None else flight_short[flight_index],flight is not None and len(flight)>0 # return a flag meaning the requests were successful
 
 def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
@@ -214,21 +216,26 @@ def get_iata_loc(trail,iata,city):
         lat,lng,iata,city = airport_info
     return iata,city
 
-def is_ori_trail(trails,tolerance=0.9):
+def is_ori_trail(trails,tolerance=0.85):
     takeoff_index = min(len(trails),200)
     takeoff_alt = sum(1 for i in range(len(trails)-takeoff_index,len(trails)) if trails[i-1]['alt'] >= trails[i]['alt'])
     return takeoff_alt/takeoff_index > tolerance
 
-def is_dest_trails(trails,tolerance=0.9):
+def is_dest_trails(trails,tolerance=0.85):
     landing_index = min(len(trails)-1,200)
     landing_alt = sum(1 for i in range(landing_index) if trails[i]['alt'] <= trails[i+1]['alt'])
     return landing_alt/landing_index > tolerance
 
 def estimate_dest_trails(trails,last_points=10):
     pred_trail = trails[0].copy()
-    if pred_trail['alt']>2000:
+    if pred_trail['alt']>3000:
         return pred_trail
-    alt_sp = sum([(trails[i+1]['alt']-trails[i]['alt'])/(trails[i]['ts']-trails[i+1]['ts']) for i in range(last_points)])/last_points
+    # [(trails[i+1]['alt']-trails[i]['alt']) for i in range(last_points)]
+    # [(trails[i]['ts']-trails[i+1]['ts']) for i in range(last_points)]
+    # [(trails[i]['spd']-trails[i+1]['spd']) for i in range(last_points)]
+    alt_sp = [(trails[i+1]['alt']-trails[i]['alt'])/(trails[i]['ts']-trails[i+1]['ts']) for i in range(last_points)]
+    alt_sp = [_ for _ in alt_sp if _ >0]
+    alt_sp = sum(alt_sp)/len(alt_sp)
     ts = pred_trail['alt']/alt_sp/2 # estimate decendent 2 times faster
     lat_diff = [trails[i]['lat']-trails[i+1]['lat'] for i in range(last_points)]
     lng_diff = [trails[i]['lng']-trails[i+1]['lng'] for i in range(last_points)]
