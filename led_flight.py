@@ -222,8 +222,8 @@ def main(wdt_pipe):
     finfo=None
     flight_followed=ut.MAX_FOLLOW_PLAN
     gc.collect()
-    while True:
-        tracemalloc.start()
+    tracemalloc.start()
+    while True:        
         wait_time = ut.WAIT_TIME
         check_brightness(config.get("display_time_night"),config['geo_loc'])
         findex,fshort,req_success = ut.get_flights(requests,config['geo_loc'],config,DEBUG_VERBOSE=DEBUG_VERBOSE)

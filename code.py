@@ -21,7 +21,7 @@ FONT=terminalio.FONT
 # limited sockets so global:
 SOCKET = socketpool.SocketPool(wifi.radio)
 REQUESTS = adafruit_requests.Session(SOCKET, ssl.create_default_context())
-LOG_N=60
+LOG_N=1
 MQTT_RECONNECTS=0
 MQTT_ERRORS=0
 try:
@@ -99,7 +99,7 @@ def log(msg):
             MQTT_LOG.connect()
             log(''.join(traceback.format_exception(None, e, e.__traceback__)))
         except  Exception as e1:
-            raise raise ConnectionError("Failed to connect to MQTT server")
+            raise ConnectionError("Failed to connect to MQTT server")
 
 
 def mqtt_disconnect(client, userdata, rc): 
@@ -281,6 +281,7 @@ def main():
         start_loop = time.monotonic()
         wait_time = ut.WAIT_TIME
         findex,fshort,req_success = ut.get_flights(REQUESTS,config['geo_loc'],config,DEBUG_VERBOSE=DEBUG_VERBOSE)
+        log(f'get_flights: {(time.monotonic()-start_loop)*1000}ms')
         if req_success:
             w.feed()
             log('Watch dog feed!')
@@ -310,6 +311,7 @@ def main():
             if DEBUG_VERBOSE:
                 print(findex,":",findex_old)
             update_flight(fshort,mp,config.get('flip_east_west'))
+            log(f'update_flight: {(time.monotonic()-start_loop)*1000}ms')
             wait_time=ut.UPDATE_TIME
         else:
             display_date_time(config.get("display_time_night"),mp)
