@@ -1,4 +1,4 @@
-import os, time, board, terminalio, json, displayio, framebufferio, rgbmatrix, gc, busio, neopixel, re, ssl, wifi, socketpool, rtc, adafruit_ntp,wifi,ipaddress,traceback
+import os, time, board, terminalio, json, displayio, framebufferio, rgbmatrix, gc, busio, neopixel, re, ssl, wifi, socketpool, rtc, adafruit_ntp,wifi,ipaddress,traceback,supervisor
 import utility as ut
 import plane_icon as pi
 from random import randrange
@@ -15,7 +15,7 @@ from watchdog import WatchDogMode
 DEBUG_VERBOSE=False
 if not DEBUG_VERBOSE:
     w.timeout=60 # timeout in seconds
-    w.mode = WatchDogMode.RESET
+    w.mode = WatchDogMode.RAISE #RESET
 
 FONT=terminalio.FONT
 # limited sockets so global:
@@ -80,11 +80,16 @@ def get_matrix_portal():
     return matrixportal
 
 def is_wifi():
+    global SOCKET
+    global REQUESTS
     if not wifi.radio.connected:
         print("WiFi dropped, reconnecting...")
         try:
             wifi.radio.connect(os.getenv("CIRCUITPY_WIFI_SSID"), os.getenv("CIRCUITPY_WIFI_PASSWORD"))
+            SOCKET = socketpool.SocketPool(wifi.radio)
+            REQUESTS = adafruit_requests.Session(SOCKET, ssl.create_default_context())
             print("WiFi reconnected")
+            time.sleep(1)
         except Exception as e:
             print("WiFi reconnect failed:", e)
             return False
@@ -100,31 +105,43 @@ def log_init():
             MQTT_LOG = MQTT.MQTT(broker=os.getenv("MQTT_BROKER_IP"), port=os.getenv("MQTT_BROKER_PORT"),
                 socket_pool=SOCKET,keep_alive=60,is_ssl=False)
             MQTT_LOG.connect()
+        else:
+            w.mode = WatchDogMode.RESET
     except Exception as e:
         print("MQTT: create failed")
         print('\n'.join(traceback.format_exception(None, e, e.__traceback__)))
         MQTT_LOG = None
 
 def is_log():
+    global SOCKET
+    global REQUESTS
     global MQTT_LOG
     if MQTT_LOG is None:
         return False
     if not is_wifi():
         return False
     try:
+        print("Before loop")
+        start_loop = time.monotonic()
         MQTT_LOG.loop()
+        print(f"After loop {(time.monotonic()-start_loop)*1000}ms")
+        if not MQTT_LOG.is_connected():
+            raise ConnectionError("MQTT connection lost")
+            #print("MQTT connection lost, attempting reconnect...")
+            #MQTT_LOG.reconnect()
+        MQTT_LOG.publish("logs/matrixportal", "Connection check",qos=0)
     except Exception as e:
-        print("MQTT: loop failed\n",'\n'.join(traceback.format_exception(None, e, e.__traceback__)))
-        try:
-            MQTT_LOG.disconnect()
-        except:
-            print("MQTT: disconnect failed")
+        print("MQTT: connection check failed")
+        traceback.print_exception(type(e), e, e.__traceback__)
         try:
             MQTT_LOG.connect()
         except Exception as e:
-            print("MQTT: reconnect failed:\n", '\n'.join(traceback.format_exception(None, e, e.__traceback__)))
+            print("MQTT: reconnect failed:")
+            traceback.print_exception(type(e), e, e.__traceback__)
             try:
-                del MQTT_LOG
+                print("MQTT: rebuilding")
+                SOCKET = socketpool.SocketPool(wifi.radio)
+                REQUESTS = adafruit_requests.Session(SOCKET, ssl.create_default_context())
                 MQTT_LOG = MQTT.MQTT(
                     broker=os.getenv("MQTT_BROKER_IP"),
                     port=os.getenv("MQTT_BROKER_PORT"),
@@ -132,7 +149,8 @@ def is_log():
                     is_ssl=False)
                 MQTT_LOG.connect()
             except Exception as e:
-                print("MQTT: reconnect failed:\n", '\n'.join(traceback.format_exception(None, e, e.__traceback__)))
+                print("MQTT: rebuilding failed:")
+                traceback.print_exception(type(e), e, e.__traceback__)
                 return False            
     return True
 
@@ -146,6 +164,7 @@ def log(msg):
         #print(f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","MQTT log", msg)
     except Exception as e:
         print(f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","MQTT Error")
+        traceback.print_exception(type(e), e, e.__traceback__)
 
 def check_wifi(matrixportal):
     ping_ip = ipaddress.IPv4Address("8.8.8.8")  # Google's DNS
@@ -323,6 +342,10 @@ def main():
         findex,fshort,req_success = ut.get_flights(REQUESTS,config['geo_loc'],config,DEBUG_VERBOSE=DEBUG_VERBOSE)
         if req_success:
             w.feed()
+        else:
+            log('http Request failed!no feed')
+            time.sleep(wait_time)
+            continue
         ## follow the previous plane when it moved outside the boundary but no new plane entered
         if findex is None and findex_old is not None and flight_followed>0:
             if DEBUG_VERBOSE:
@@ -357,15 +380,15 @@ def main():
         if DEBUG_VERBOSE:
             print("  Free:", gc.mem_free(), "bytes","  Allocated:", gc.mem_alloc(), "bytes")
         else:
-            log(f'Main loop: {(time.monotonic()-start_loop)*1000}ms')
-            log(f"Allocated: {gc.mem_alloc()} bytes\tFree: {gc.mem_free()} bytes")
+            log(f'Main loop: {(time.monotonic()-start_loop)*1000}ms\tAllocated: {gc.mem_alloc()} bytes\tFree: {gc.mem_free()} bytes')
 
 try:
     main()
 except Exception as e:
     log("EXCEPTION: ")
     log(''.join(traceback.format_exception(None, e, e.__traceback__)))
-    mc.reset()
+    supervisor.reload()
+    #mc.reset()
     #error_text = ''.join(traceback.format_exception(None, e, e.__traceback__))
     #now = time.localtime()
     #print("========",f"{now.tm_year}-{now.tm_mon:02}-{now.tm_mday:02} {now.tm_hour:02}:{now.tm_min:02}:{now.tm_sec:02}","========\n")

@@ -7,6 +7,7 @@ UPDATE_TIME=5
 WAIT_TIME_MAX=75
 MAX_FOLLOW_PLAN=70
 LANDING_ALTITUDE=51
+LANDING_ALTITUDE_MAX=4000
 FLIGHT_SEARCH_HEAD="https://data-cloud.flightradar24.com/zones/fcgi/feed.js?"
 FLIGHT_SEARCH_TAIL="&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1" #&limit=1
 FLIGHT_LONG_DETAILS_HEAD="https://data-live.flightradar24.com/clickhandler/?flight="
@@ -33,9 +34,9 @@ def is_between(v,r):
         s, l = l, s
     return s <= v <= l
 
-def get_request_response(requests,url,DEBUG_VERBOSE=False):
+def get_request_response(requests,url,DEBUG_VERBOSE=False,timeout=5):
     try:       
-        response = requests.get(url=url,headers=HTTP_HEADERS)
+        response = requests.get(url=url,headers=HTTP_HEADERS,timeout=timeout)
         response_json = response.json()
         response.close()
         gc.collect()
@@ -129,6 +130,8 @@ def get_flights(requests,geoloc,rInfo,DEBUG_VERBOSE=False):
     # https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=32.74,32.70,-117.17,-117.10&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1
     url = FLIGHT_SEARCH_HEAD+"bounds="+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
     flight=get_request_response(requests,url,DEBUG_VERBOSE)
+    if flight is None:
+        return None,None,False
     if DEBUG_VERBOSE:
         print(flight)
     flight_dist={}
@@ -145,7 +148,10 @@ def get_flights(requests,geoloc,rInfo,DEBUG_VERBOSE=False):
                flight_dist[k] = get_distance(center_geoloc,v[1:3])
                flight_short[k] = {FLIGHT_SHORT_KEYS[i]:v[i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(v)))}#    {'heading':v[3],'altitude':v[4]}
     flight_index = None if len(flight_dist)==0 else min(flight_dist, key=flight_dist.get)
-    if FLIGHT_DETAILS_LATEST is not None and FLIGHT_DETAILS_LATEST['flight_index'] == flight_index:
+    if FLIGHT_DETAILS_LATEST is not None and flight_index is not None and FLIGHT_DETAILS_LATEST['flight_index'] == flight_index:
+        if len(FLIGHT_DETAILS_LATEST['dest'])!=3:
+            a = get_flight_detail(requests,flight_index)
+            time.sleep(1)
         flight_short[flight_index].update({k:v for k,v in FLIGHT_DETAILS_LATEST.items() if k in ['flight_number','ori','dest']})
     return flight_index,None if flight_index is None else flight_short[flight_index],flight is not None and len(flight)>0 # return a flag meaning the requests were successful
 
@@ -155,6 +161,8 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
         print("flight_index: ",flight_index)
     flight_details=None
     flight=get_request_response(requests,FLIGHT_LONG_DETAILS_HEAD+flight_index,DEBUG_VERBOSE)
+    if flight is None:
+        return None
     if flight is not None:
         ori_iata = get_dict_value(flight,['airport','origin','code','iata'])
         ori_city = get_dict_value(flight,['airport','origin','position','region','city'])
@@ -169,7 +177,7 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
         dest_city = get_dict_value(flight,['airport','destination','position','region','city'])
         if (dest_iata=='NA' or dest_city=='NA') and is_dest_trails(get_dict_value(flight,['trail'])):
             try:
-                dest_iata,dest_city = get_iata_loc(estimate_dest_trails(get_dict_value(flight,['trail'])),dest_iata,dest_city)
+                dest_iata,dest_city = get_iata_loc(estimate_dest_trails(get_dict_value(flight,['trail',0])),dest_iata,dest_city)
             except Exception as e:
                 if DEBUG_VERBOSE:
                     print("Error: get_iata_loc dest")
@@ -189,8 +197,8 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
                 'heading': get_dict_value(flight,['trail',0,'hd']),
                 'speed': get_dict_value(flight,['trail',0,'spd']),
                 'eta': get_dict_value(flight,['time','estimated','arrival']),
-                'ori': ori_iata,
-                'dest': dest_iata
+                'ori': re.sub('NA','',ori_iata),
+                'dest': re.sub('NA','',dest_iata)
         }
         flight_details['flight_number'] = flight_details['flight_number'] if not flight_details['flight_number']=='NA' else flight_details['airline_name']
         flight_details['airports_short'] = re.sub('NA','',flight_details['airports_short'])
@@ -202,16 +210,19 @@ def get_flight_short(requests,flight_index,DEBUG_VERBOSE=False):
         return None
     url = FLIGHT_SEARCH_HEAD+"flight_id="+flight_index #+FLIGHT_SEARCH_TAIL
     flight=get_request_response(requests,url,DEBUG_VERBOSE)
-    if not flight_index in flight.keys():
+    if flight is None or not flight_index in flight.keys():
         return None
     flight_details = {FLIGHT_SHORT_KEYS[i]:flight[flight_index][i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(flight[flight_index])))}
     if FLIGHT_DETAILS_LATEST is not None and FLIGHT_DETAILS_LATEST['flight_index'] == flight_index:
+        if len(FLIGHT_DETAILS_LATEST['dest'])!=3:
+            a = get_flight_detail(requests,flight_index)
+            time.sleep(1)
         flight_details.update({k:v for k,v in FLIGHT_DETAILS_LATEST.items() if k in ['flight_number','ori','dest']})
     return flight_details #{FLIGHT_SHORT_KEYS[i]:flight[flight_index][i] for i in range(min(len(FLIGHT_SHORT_KEYS),len(flight[flight_index])))}
 
 def get_time_zone_offset(requests,tz,DEBUG_VERBOSE):
     url=re.sub('APIKEY',os.getenv("TIMEZONEDB_API_KEY"),TIME_ZONE_SEARCH_HEAD)+tz
-    tInfo = get_request_response(requests,url,DEBUG_VERBOSE=DEBUG_VERBOSE)
+    tInfo = get_request_response(requests,url,DEBUG_VERBOSE=DEBUG_VERBOSE,timeout=20)
     if tInfo['status'] == 'OK':
         return tInfo['gmtOffset']/3600,tInfo['abbreviation']
     return None,None
@@ -220,10 +231,10 @@ def closest_heading(angle):
     compass_points = [0, 45, 90, 135, 180, 225, 270, 315]
     return min(compass_points, key=lambda x: abs((angle - x + 180) % 360 - 180))
 
-def get_iata_loc(trail,iata,city):
+def get_iata_loc(trail,iata,city,raidus=5):
     airport_info = kd.nearest(kd.IATA_INFO,(trail['lat'],trail['lng']))
-    if airport_info is not None:
-        lat,lng,iata,city = airport_info
+    if airport_info is not None and airport_info[-1]<raidus:
+        lat,lng,iata,city,distance = airport_info
     return iata,city
 
 def is_ori_trail(trails,tolerance=0.85):
@@ -232,27 +243,25 @@ def is_ori_trail(trails,tolerance=0.85):
     return takeoff_alt/takeoff_index > tolerance
 
 def is_dest_trails(trails,tolerance=0.85):
+    if trails[0]['alt']>LANDING_ALTITUDE_MAX:
+        return False
     landing_index = min(len(trails)-1,200)
     landing_alt = sum(1 for i in range(landing_index) if trails[i]['alt'] <= trails[i+1]['alt'])
     return landing_alt/landing_index > tolerance
 
-def estimate_dest_trails(trails,last_points=10):
-    pred_trail = trails[0].copy()
-    if pred_trail['alt']>3000:
+def estimate_dest_trails(trail,dist=5):
+    pred_trail = trail.copy()
+    if pred_trail['alt']>LANDING_ALTITUDE_MAX:
         return pred_trail
-    # [(trails[i+1]['alt']-trails[i]['alt']) for i in range(last_points)]
-    # [(trails[i]['ts']-trails[i+1]['ts']) for i in range(last_points)]
-    # [(trails[i]['spd']-trails[i+1]['spd']) for i in range(last_points)]
-    alt_sp = [(trails[i+1]['alt']-trails[i]['alt'])/(trails[i]['ts']-trails[i+1]['ts']) for i in range(last_points)]
-    alt_sp = [_ for _ in alt_sp if _ >0]
-    alt_sp = sum(alt_sp)/len(alt_sp)
-    ts = pred_trail['alt']/alt_sp/2 # estimate decendent 2 times faster
-    lat_diff = [trails[i]['lat']-trails[i+1]['lat'] for i in range(last_points)]
-    lng_diff = [trails[i]['lng']-trails[i+1]['lng'] for i in range(last_points)]
-    #'%.4f,%.4f'%(pred_trail['lat']+ts*sum(lat_diff)/last_points,pred_trail['lng']+ts*sum(lng_diff)/last_points)
+    R = 3958.8
+    phi1 = math.radians(pred_trail['lat'])
+    lambda1 = math.radians(pred_trail['lng'])
+    theta = math.radians(pred_trail['hd'])
+    d_over_R = dist / R
+    phi2 = math.asin( math.sin(phi1) * math.cos(d_over_R) + math.cos(phi1) * math.sin(d_over_R) * math.cos(theta) )
+    lambda2 = lambda1 + math.atan2( math.sin(theta) * math.sin(d_over_R) * math.cos(phi1), math.cos(d_over_R) - math.sin(phi1) * math.sin(phi2) )
     pred_trail.update({
-        'lat':pred_trail['lat']+ts*sum(lat_diff)/last_points,
-        'lng':pred_trail['lng']+ts*sum(lng_diff)/last_points,
+        'lat':math.degrees(phi2),
+        'lng':math.degrees(lambda2),
     })
-    #print('%.4f,%.4f'%(pred_trail['lat'],pred_trail['lng']))
     return pred_trail
