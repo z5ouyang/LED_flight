@@ -197,11 +197,11 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
                 'heading': get_dict_value(flight,['trail',0,'hd']),
                 'speed': get_dict_value(flight,['trail',0,'spd']),
                 'eta': get_dict_value(flight,['time','estimated','arrival']),
-                'ori': re.sub('NA','',ori_iata),
-                'dest': re.sub('NA','',dest_iata)
+                'ori': re.sub('^NA$','',ori_iata),
+                'dest': re.sub('^NA$','',dest_iata)
         }
         flight_details['flight_number'] = flight_details['flight_number'] if not flight_details['flight_number']=='NA' else flight_details['airline_name']
-        flight_details['airports_short'] = re.sub('NA','',flight_details['airports_short'])
+        flight_details['airports_short'] = re.sub(r'(?<![A-Za-z])NA(?![A-Za-z])','',flight_details['airports_short'])#re.sub('NA','',flight_details['airports_short'])
     FLIGHT_DETAILS_LATEST = flight_details
     return flight_details
 
