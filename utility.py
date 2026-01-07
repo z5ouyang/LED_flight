@@ -128,6 +128,7 @@ def get_flights(requests,geoloc,rInfo,DEBUG_VERBOSE=False):
     center_geoloc=rInfo.get('center_loc')
     dest=rInfo.get('dest')
     # https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=32.74,32.70,-117.17,-117.10&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=0&stats=0&ems=1
+    # flight=get_request_response(requests,FLIGHT_LONG_DETAILS_HEAD+'3dd052de')
     url = FLIGHT_SEARCH_HEAD+"bounds="+",".join(str(i) for i in geoloc)+FLIGHT_SEARCH_TAIL
     flight=get_request_response(requests,url,DEBUG_VERBOSE)
     if flight is None:
@@ -201,7 +202,7 @@ def get_flight_detail(requests,flight_index,DEBUG_VERBOSE=False):
                 'dest': re.sub('^NA$','',dest_iata)
         }
         flight_details['flight_number'] = flight_details['flight_number'] if not flight_details['flight_number']=='NA' else flight_details['airline_name']
-        flight_details['airports_short'] = re.sub(r'(?<![A-Za-z])NA(?![A-Za-z])','',flight_details['airports_short'])#re.sub('NA','',flight_details['airports_short'])
+        flight_details['airports_short'] = re.sub(r'^NA-NA$|^NA-|-NA$','-',flight_details['airports_short'])#re.sub('NA','',flight_details['airports_short'])
     FLIGHT_DETAILS_LATEST = flight_details
     return flight_details
 
@@ -238,6 +239,8 @@ def get_iata_loc(trail,iata,city,raidus=5):
     return iata,city
 
 def is_ori_trail(trails,tolerance=0.85):
+    if trails[-1]['alt']<100:
+        return True
     takeoff_index = min(len(trails),200)
     takeoff_alt = sum(1 for i in range(len(trails)-takeoff_index,len(trails)) if trails[i-1]['alt'] >= trails[i]['alt'])
     return takeoff_alt/takeoff_index > tolerance
@@ -245,7 +248,7 @@ def is_ori_trail(trails,tolerance=0.85):
 def is_dest_trails(trails,tolerance=0.85):
     if trails[0]['alt']>LANDING_ALTITUDE_MAX:
         return False
-    landing_index = min(len(trails)-1,200)
+    landing_index = min(int(len(trails)/2),200)
     landing_alt = sum(1 for i in range(landing_index) if trails[i]['alt'] <= trails[i+1]['alt'])
     return landing_alt/landing_index > tolerance
 
