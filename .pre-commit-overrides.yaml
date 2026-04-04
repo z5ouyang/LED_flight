@@ -1,0 +1,27 @@
+project_type: hardware
+
+disable:
+  - no-hardcoded-settings
+  - no-fallback-defaults
+  - pattern-drift
+
+hooks:
+  python-use-type-annotations:
+    exclude: ^(code|plane_icon)\.py$
+  no-suppression-comments:
+    exclude: ^(code|plane_icon)\.py$
+  detect-ai-cheats:
+    exclude: ^(code|plane_icon|led_flight|modbus_led|modbus_relay_class)\.py$
+  code-quality:
+    exclude: ^(code|plane_icon)\.py$
+  no-todos:
+    exclude: ^(code|plane_icon)\.py$
+  no-print:
+    exclude: ^(code|plane_icon)\.py$
+  no-bare-except:
+    exclude: ^(code|plane_icon)\.py$
+  codespell:
+    exclude: (\.patch|\.json|resources/)$
+    args: [--ignore-words-list, "modbus,neopixel,matrixportal,adafruit,iata,ser,hass,hav"]
+  mypy:
+    entry: "bash -c 'if [ ! -f .venv/bin/mypy ]; then echo \"ERROR: .venv/bin/mypy not found.\"; exit 1; fi; .venv/bin/mypy --exclude \"(code|plane_icon)\\.py$\" .'"
