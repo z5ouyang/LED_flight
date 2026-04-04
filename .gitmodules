@@ -1,0 +1,3 @@
+[submodule "lib/tim"]
+	path = lib/tim
+	url = https://github.com/schreyack/tim.git

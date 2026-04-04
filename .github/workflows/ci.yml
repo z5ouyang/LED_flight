@@ -1,0 +1,156 @@
+# TIM Standards - LED_flight CI Pipeline
+# Gate 2 (CI) checks adapted for hardware project
+#
+# - Linting & formatting (ruff)
+# - Type checking (mypy --strict)
+# - Security scanning (bandit, safety)
+# - Secrets detection (trufflehog)
+# - Pattern compliance
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ==========================================================================
+  # GATE 2: Linting, Formatting & File Size
+  # ==========================================================================
+  lint:
+    name: Lint, Format & File Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run ruff check
+        run: ruff check --exclude lib/ .
+
+      - name: Run ruff format check
+        run: ruff format --check --exclude lib/ .
+
+      - name: Check file sizes (max 500 lines)
+        run: |
+          echo "Checking file sizes..."
+          failed=0
+          while IFS= read -r f; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 500 ]; then
+              echo "ERROR: $f has $lines lines (max 500)"
+              failed=1
+            fi
+          done < <(find . -name '*.py' -not -path './lib/*' -type f)
+          if [ $failed -eq 1 ]; then
+            echo ""
+            echo "Files exceeding 500 lines must be split."
+            exit 1
+          fi
+          echo "All files within size limits"
+
+  # ==========================================================================
+  # GATE 2: Type Checking
+  # ==========================================================================
+  typecheck:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run mypy (strict mode)
+        run: mypy --strict --exclude '(code|plane_icon)\.py$' --exclude 'lib/' .
+
+  # ==========================================================================
+  # GATE 2: Security Scanning
+  # ==========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install security tools
+        run: pip install bandit safety
+
+      - name: Run bandit (code scan)
+        run: bandit -ll -ii -r . --exclude ./lib/
+
+      - name: Run safety (dependency scan)
+        continue-on-error: true
+        run: safety check -r requirements.txt
+
+  # ==========================================================================
+  # GATE 2: Secrets Detection
+  # ==========================================================================
+  secrets:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Scan
+        uses: trufflesecurity/trufflehog@v3.88.5
+        with:
+          extra_args: --results=verified,unverified
+
+  # ==========================================================================
+  # GATE 4: Pattern Compliance
+  # ==========================================================================
+  compliance:
+    name: Pattern Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Check .tim-patterns.yaml exists
+        run: |
+          if [ ! -f ".tim-patterns.yaml" ]; then
+            echo "ERROR: .tim-patterns.yaml not found"
+            echo "Every TIM project requires a pattern registry."
+            exit 1
+          fi
+
+      - name: Run compliance check
+        run: bash lib/tim/tools/tim-compliance-check.sh || true
+
+  # ==========================================================================
+  # GATE 2: All Checks Must Pass
+  # ==========================================================================
+  gate2-complete:
+    name: Gate 2 Complete
+    needs: [lint, typecheck, security, secrets, compliance]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All checks passed
+        run: echo "All Gate 2 checks passed"

@@ -1,0 +1,33 @@
+[project]
+name = "led-flight"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml",
+    "requests",
+    "pyserial",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = ["lib/", "resources/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"code.py" = ["I001", "F401", "E402", "F811", "E501", "F841"]
+"plane_icon.py" = ["I001", "F401", "E402", "F811", "E501"]
+
+[tool.mypy]
+strict = true
+exclude = ["code\\.py$", "plane_icon\\.py$", "lib/"]
+
+[[tool.mypy.overrides]]
+module = ["plane_icon"]
+follow_imports = "skip"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"

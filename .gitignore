@@ -4,3 +4,12 @@ setting.toml
 log
 *DS_Store
 __pycache__/*
+
+# TIM
+comms/
+.secrets.baseline.bak
+*.pyc
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.venv/

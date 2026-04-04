@@ -1,0 +1,10 @@
+ruff
+pylint
+mypy
+types-requests
+types-PyYAML
+types-pyserial
+detect-secrets
+bandit
+codespell
+safety
