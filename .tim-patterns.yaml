@@ -1,0 +1,39 @@
+project:
+  name: led-flight
+  stack: python
+  version: "0.1.0"
+
+patterns:
+  error_handling:
+    standard: basic-try-except
+    description: "try/except with logging for standard Python, bare except acceptable in CircuitPython for hardware fault tolerance"
+    implemented: true
+  logging:
+    standard: dual-logging
+    description: "print() for CircuitPython serial console, Python logging module for standard files"
+    implemented: true
+  input_validation:
+    standard: json-config-validation
+    description: "JSON config (private.json) validated on load"
+    implemented: false
+    notes: "Existing code does minimal validation — to be improved"
+  external_api:
+    standard: requests-with-timeout
+    description: "Flightradar24/TimezoneDB API calls use requests with timeout and error handling"
+    implemented: true
+  serial_communication:
+    standard: modbus-protocol
+    description: "Modbus serial LED and relay control via pyserial"
+    implemented: true
+
+excluded_patterns:
+  - name: authentication
+    reason: "No user auth"
+  - name: database_access
+    reason: "No database"
+  - name: api_versioning
+    reason: "No API served"
+  - name: caching
+    reason: "No cache layer"
+  - name: background_jobs
+    reason: "Watchdog is a simple process loop, not a job queue"

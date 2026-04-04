@@ -1,0 +1,9 @@
+[MASTER]
+ignored-modules=board,terminalio,displayio,framebufferio,rgbmatrix,busio,neopixel,wifi,socketpool,rtc,adafruit_ntp,ssl,supervisor,microcontroller,watchdog,digitalio,adafruit_matrixportal,adafruit_matrixportal.matrixportal,adafruit_portalbase,adafruit_portalbase.network,adafruit_minimqtt,adafruit_minimqtt.adafruit_minimqtt,adafruit_requests,adafruit_display_text,adafruit_display_text.label
+ignored-classes=MatrixPortal,DigitalInOut,WatchDogMode
+
+[MESSAGES CONTROL]
+disable=import-error,no-member,too-many-instance-attributes,too-many-arguments,too-many-locals,too-many-branches,too-many-statements,too-few-public-methods
+
+[FORMAT]
+max-line-length=100

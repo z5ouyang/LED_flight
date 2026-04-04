@@ -1,0 +1,187 @@
+# TIM Standards - Python Pre-commit Configuration
+# Customized for LED_flight (CircuitPython + standard Python)
+# Run: pre-commit install
+
+repos:
+  # LOCKED - Prevent AI from modifying enforcement files
+  - repo: local
+    hooks:
+      - id: protect-enforcement-files
+        name: LOCKED - enforcement files require human approval to modify
+        entry: "bash -c 'printf \"BLOCKED: These enforcement files require --no-verify (human approval):\\n\"; for f; do printf \"  %s\\n\" \"$f\"; done; exit 1' --"
+        language: system
+        files: >-
+          (?x)^(
+            \.gitignore|
+            \.pre-commit-config\.yaml|
+            \.secrets\.baseline|
+            \.tim-settings-sot\.yaml|
+            \.tim-no-fallback\.yaml|
+            \.tim-no-suppression\.yaml|
+            \.tim-ai-cheat\.yaml
+          )$
+
+  # Ruff - Fast linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: lib/
+      - id: ruff-format
+        exclude: lib/
+
+  # MyPy - Type checking (strict mode, excludes CircuitPython files)
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict, project venv)
+        entry: "bash -c 'if [ ! -f .venv/bin/mypy ]; then echo \"ERROR: .venv/bin/mypy not found.\"; exit 1; fi; .venv/bin/mypy --exclude \"(code|plane_icon)\\.py$\" .'"
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  # Detect secrets - Prevent committing secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --baseline
+          - .secrets.baseline
+          - --exclude-lines
+          - "secretKey:|secretKeyRef:|remoteRef:|valueFrom:|secretName:"
+        exclude: package-lock\.json|poetry\.lock|\.patch$
+
+  # Commitizen - Enforce commit message format
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+        exclude: \.uf2$
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: check-ast
+
+  # Security - Bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.3
+    hooks:
+      - id: bandit
+        args: [-ll]
+        exclude: ^lib/
+
+  # Codespell - Catch common misspellings
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        exclude: (\.patch|\.json)$
+        args: [--ignore-words-list, "modbus,neopixel,matrixportal,adafruit,iata,ser,hass,hav"]
+        exclude: (\.patch|\.json|resources/)$
+
+  # Python-specific regex checks
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
+      - id: python-no-eval
+      - id: python-no-log-warn
+      - id: python-use-type-annotations
+        exclude: ^(code|plane_icon)\.py$
+      - id: text-unicode-replacement-char
+
+  # No suppression comments - Ban inline enforcement bypass
+  - repo: local
+    hooks:
+      - id: no-suppression-comments
+        name: No suppression comments (ban inline bypass)
+        entry: python3 lib/tim/tools/no-suppression-comments.py --language python
+        language: system
+        types: [python]
+        exclude: ^(code|plane_icon)\.py$
+
+  # AI cheat detection - Detect code-level enforcement evasion
+  - repo: local
+    hooks:
+      - id: detect-ai-cheats
+        name: AI cheat detection (code-level enforcement evasion)
+        entry: python3 lib/tim/tools/detect-ai-cheats.py --language python
+        language: system
+        types: [python]
+        exclude: ^(code|plane_icon|led_flight|modbus_led|modbus_relay_class)\.py$
+
+  # CLAUDE.md Enforcement - Catch AI instruction violations
+  - repo: local
+    hooks:
+      # Code quality: 500 line files, 50 line functions, complexity 10
+      - id: code-quality
+        name: Code quality (file size, function size, complexity)
+        entry: python3 lib/tim/tools/check-code-quality.py --language python
+        language: system
+        types: [python]
+        exclude: ^(code|plane_icon)\.py$
+
+      # Block TODO/FIXME comments (staged files only)
+      - id: no-todos
+        name: No TODO/FIXME comments
+        entry: "bash -c 'if grep -nE \"TODO|FIXME|XXX\" \"$@\" 2>/dev/null; then echo ERROR - Remove TODO/FIXME/XXX comments; exit 1; fi; exit 0' --"
+        language: system
+        types: [python]
+        exclude: ^(code|plane_icon)\.py$
+
+      # Block print statements (staged files only)
+      - id: no-print
+        name: No print statements
+        entry: "bash -c 'if grep -nE \"(^|[^a-zA-Z_])print\\(\" \"$@\" 2>/dev/null; then echo ERROR - Use logging instead of print; exit 1; fi; exit 0' --"
+        language: system
+        types: [python]
+        exclude: ^(code|plane_icon)\.py$
+
+      # Block bare except clauses (staged files only)
+      - id: no-bare-except
+        name: No bare except clauses
+        entry: "bash -c 'if grep -n \"except:\" \"$@\" 2>/dev/null; then echo ERROR - Catch specific exceptions; exit 1; fi; exit 0' --"
+        language: system
+        types: [python]
+        exclude: ^(code|plane_icon)\.py$
+
+      # Block placeholder implementations (staged files only)
+      - id: no-placeholders
+        name: No placeholder implementations
+        entry: "bash -c 'if grep -n NotImplementedError \"$@\" 2>/dev/null; then echo ERROR - Implement fully, no NotImplementedError; exit 1; fi; exit 0' --"
+        language: system
+        types: [python]
+
+  # Pylint for CircuitPython files — DISABLED (too noisy for CP idioms, ruff covers linting)
+  # To re-enable: uncomment and tune .pylintrc-circuitpython
+  # - repo: local
+  #   hooks:
+  #     - id: pylint-circuitpython
+  #       name: pylint (CircuitPython files)
+  #       entry: .venv/bin/pylint --rcfile=.pylintrc-circuitpython
+  #       language: system
+  #       files: ^(code|plane_icon)\.py$
+  #       types: [python]
+
+# CI runs these same checks
+ci:
+  autofix_commit_msg: "style: auto-fix pre-commit issues"
+  autoupdate_commit_msg: "chore: update pre-commit hooks"
