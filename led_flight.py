@@ -177,6 +177,19 @@ def check_brightness(
         ml.set_brightness(LED_DAY_BRIGHTNESS)
 
 
+def _vertical_indicator(finfo: dict[str, Any]) -> str:
+    """Return ^/v prefix based on vertical speed, or empty for level."""
+    try:
+        vs = int(finfo.get("vertical_speed", 0))
+    except (ValueError, TypeError):
+        return ""
+    if vs > 100:
+        return "^"
+    if vs < -100:
+        return "v"
+    return ""
+
+
 def _altitude_color(altitude: int | str) -> str:
     """Color by altitude: green (low), yellow (mid), red (high)."""
     try:
@@ -230,22 +243,6 @@ def display_date_time() -> None:
     ml.show_text(64, 16, 64, 16, "FF0", dt.strftime("%H:%M"), font=4)
 
 
-def plane_animation_old() -> None:
-    img = pi.get_plane_horizontal()
-    w = h = len(img)
-    H = 32
-    W = 192
-    h1 = int((H - h) / 2)
-    h2 = H - h - h1
-    for _i in range(h1):
-        img.insert(0, "0" * w)
-    for _i in range(h2):
-        img.append("0" * w)
-    ml.show_image(W - w, 0, img)
-    for step in range(W):
-        ml.move_frame_left(max(0, W - w - step), 0, w, H)
-
-
 def plane_animation(heading: int | None = None) -> None:
     heading = 270 if heading is None or isinstance(heading, str) else heading
     heading = (360 - heading) % 360 if FLIP_EAST_WEST else heading
@@ -277,7 +274,7 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
         190 - x - w,
         16,
         _altitude_color(fInfo["altitude"]),
-        f"{fInfo['altitude']}ft {fInfo['speed']}kts",
+        f"{_vertical_indicator(fInfo)}{fInfo['altitude']}ft {fInfo['speed']}kts",
         h_align="00",
         font=3,
     )
