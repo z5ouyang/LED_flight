@@ -68,7 +68,7 @@ def get_dict_value(d: Any, keys: Sequence[str | int]) -> Any:
         return d
     if isinstance(keys[0], int):
         return get_dict_value(d[keys[0]], keys[1:])
-    if keys[0] in d.keys():
+    if keys[0] in d:
         return get_dict_value(d.get(keys[0]), keys[1:])
     return "NA"
 
@@ -86,7 +86,8 @@ def get_request_response(
     except (requests_lib.RequestException, ValueError, KeyError) as e:
         logger.debug("Request failed", exc_info=e)
         return None
-    return response_json
+    result: dict[str, Any] = response_json
+    return result
 
 
 def _to_flight_short(v: list[Any]) -> dict[str, Any]:
@@ -286,7 +287,7 @@ def get_flight_short(
         return None
     url = FLIGHT_SEARCH_HEAD + "flight_id=" + flight_index
     flight = get_request_response(requests, url, DEBUG_VERBOSE)
-    if flight is None or flight_index not in flight.keys():
+    if flight is None or flight_index not in flight:
         return None
     flight_details = _to_flight_short(flight[flight_index])
     if FLIGHT_DETAILS_LATEST is not None and FLIGHT_DETAILS_LATEST["flight_index"] == flight_index:

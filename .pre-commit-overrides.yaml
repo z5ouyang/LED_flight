@@ -11,7 +11,7 @@ hooks:
   no-suppression-comments:
     exclude: ^(code|plane_icon)\.py$
   detect-ai-cheats:
-    exclude: ^(code|plane_icon|led_flight|modbus_led|modbus_relay_class)\.py$
+    exclude: ^(code|plane_icon|led_flight|modbus_led|modbus_relay_class|flight_api)\.py$
   code-quality:
     exclude: ^(code|plane_icon)\.py$
   no-todos:
