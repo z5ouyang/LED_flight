@@ -90,8 +90,12 @@ def nearest(
         next_branch = node.right
         opposite_branch = node.left
     best = nearest(next_branch, target, depth + 1, best, dimensions)
-    if best is not None and distance_haversine(target, node.point, axis) < best[-1]:
-        best = nearest(opposite_branch, target, depth + 1, best)
+    # KD-tree pruning: single-axis squared-degree distance vs best total squared-degree distance.
+    # Original code used distance_haversine() here (miles) against distance_sq() (squared degrees)
+    # which compared incompatible units, causing over-pruning. Revert to distance_haversine if
+    # nearest-airport results regress.
+    if best is not None and (target[axis] - node.point[axis]) ** 2 < best[-1]:
+        best = nearest(opposite_branch, target, depth + 1, best, dimensions)
     return best
 
 

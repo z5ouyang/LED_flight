@@ -80,9 +80,9 @@ def git_sync():
                 sha = res[0]["sha"]
                 url = "https://raw.githubusercontent.com/z5ouyang/LED_flight/main/" + f
                 res = REQUESTS.get(url=url)
-                if res is not None and res.text is not None and len(res.txt) > 10:
+                if res is not None and res.text is not None and len(res.text) > 10:
                     with open(f, "w") as file:
-                        file.write(res.txt)
+                        file.write(res.text)
                     GIT_COMMIT[f] = sha
         except Exception as e:
             if DEBUG_VERBOSE:
@@ -296,7 +296,7 @@ def get_plane_Bmp(matrixportal):
     planePalette[1] = PLANE_COLOUR
     planePalette[0] = 0x000000
     icon_data = pi.get_plane_horizontal()
-    get_BMP(pi.get_plane_horizontal(), planeBmp)
+    get_BMP(icon_data, planeBmp)
     planeTg = displayio.TileGrid(planeBmp, pixel_shader=planePalette)
     planeG = displayio.Group(x=matrixportal.display.width + 12, y=10)
     planeG.append(planeTg)

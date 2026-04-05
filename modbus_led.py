@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+import unicodedata
 
 import serial
 
@@ -19,20 +20,25 @@ CRC = b"\x00\x00"
 EF = b"\x5a\x55"
 
 
+def _safe_ascii(txt: str) -> bytes:
+    """Strip accents and encode to ASCII for GB2312 display."""
+    normalized = unicodedata.normalize("NFKD", txt)
+    return normalized.encode("ascii", errors="replace")
+
+
 def send_modbus(tx_data: bytes) -> bytes:
-    ser = serial.Serial(
+    with serial.Serial(
         port=PORT,
         baudrate=BAUDRATE,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
         bytesize=serial.EIGHTBITS,
         timeout=1,
-    )
-    ser.reset_input_buffer()
-    ser.write(tx_data)
-    time.sleep(0.1)
-    rx_data = ser.read_all()
-    ser.close()
+    ) as ser:
+        ser.reset_input_buffer()
+        ser.write(tx_data)
+        time.sleep(0.1)
+        rx_data = ser.read_all()
     return rx_data if rx_data is not None else b""
 
 
@@ -186,11 +192,12 @@ def show_text(
     W = int(w).to_bytes(2, byteorder="little")
     H = int(h).to_bytes(2, byteorder="little")
     FORMAT = _encode_text_format(col, h_align, v_align, multiline, font)
-    CNT = int(len(txt)).to_bytes(2, byteorder="little")
+    txt_bytes = _safe_ascii(txt)
+    CNT = int(len(txt_bytes)).to_bytes(2, byteorder="little")
     get_response(
         GID,
         b"\x38\x02",
-        X + Y + W + H + FORMAT + CNT + txt.encode("ascii"),
+        X + Y + W + H + FORMAT + CNT + txt_bytes,
     )
 
 
@@ -292,12 +299,13 @@ def create_txt_programe(
     STYLE = b"\x00\x00\x00\x00"
     FORMAT = _encode_text_format(col, h_align, v_align, multiline, font)
     TIMING = _encode_animation_timing(en, sp, du, ex, repeat)
-    CNT = int(len(txt)).to_bytes(2, byteorder="little")
+    txt_bytes = _safe_ascii(txt)
+    CNT = int(len(txt_bytes)).to_bytes(2, byteorder="little")
     try:
         get_response(
             GID,
             b"\x10\x03",
-            WID + REV + STYLE + FORMAT + TIMING + CNT + txt.encode("ascii"),
+            WID + REV + STYLE + FORMAT + TIMING + CNT + txt_bytes,
         )
     except (serial.SerialException, OSError) as e:
         logger.error("Error in create_txt_programe: %s", txt)

@@ -104,8 +104,8 @@ def set_time_zone(tz: str) -> None:
     global TZ
     try:
         TZ = ZoneInfo(tz)
-    except subprocess.CalledProcessError as e:
-        logger.debug("Ping failed: %s", e.output.decode())
+    except Exception as e:
+        logger.debug("Time zone error: %s", e)
     ml.show_text(
         0,
         0,
@@ -122,8 +122,8 @@ def _update_sunrise(dt: datetime, geo_loc: list[float]) -> None:
     global LED_SUN_RISE
     try:
         params: dict[str, str] = {
-            "lat": str(geo_loc[0]),
-            "lng": str(geo_loc[2]),
+            "lat": str((geo_loc[0] + geo_loc[1]) / 2),
+            "lng": str((geo_loc[2] + geo_loc[3]) / 2),
             "date": dt.date().isoformat(),
             "formatted": "0",
         }
@@ -132,8 +132,11 @@ def _update_sunrise(dt: datetime, geo_loc: list[float]) -> None:
             params=params,
             timeout=10,
         )
-        sunrise = datetime.fromisoformat(response.json()["results"]["sunrise"]).astimezone(TZ)
-        LED_SUN_RISE = {dt.date().isoformat(): sunrise}
+        try:
+            sunrise = datetime.fromisoformat(response.json()["results"]["sunrise"]).astimezone(TZ)
+            LED_SUN_RISE = {dt.date().isoformat(): sunrise}
+        finally:
+            response.close()
     except (requests.RequestException, KeyError, ValueError):
         LED_SUN_RISE = None
 
@@ -300,8 +303,8 @@ def init(config: dict[str, Any]) -> bool:
             return False
         set_time_zone(config["time_zone"])
         ml.clear_screen()
-    except subprocess.CalledProcessError as e:
-        logger.debug("LED controller failed: %s", e.output.decode())
+    except Exception as e:
+        logger.debug("Init failed: %s", e)
         return False
     return True
 
@@ -388,6 +391,14 @@ def watchdog(
             msg = wdt_pipe.recv()
             if msg == "feed":
                 last_feed = time.time()
+        if not child_process.is_alive():
+            logger.warning(
+                "%s Child process died — restarting immediately",
+                datetime.now(TZ),
+            )
+            child_process.join()
+            restart_program()
+            sys.exit()
         if time.time() - last_feed > timeout:
             logger.warning(
                 "%s Watchdog timeout! Restarting process...",
@@ -417,6 +428,6 @@ def restart_program() -> None:
 
 if __name__ == "__main__":
     parent_conn, child_conn = multiprocessing.Pipe()
-    p = multiprocessing.Process(target=main, args=(child_conn,))
+    p = multiprocessing.Process(target=main_try, args=(child_conn,))
     p.start()
     watchdog(timeout=TIMEOUT, child_process=p, wdt_pipe=parent_conn)
