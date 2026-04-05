@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+import json
 import logging
 import multiprocessing
 import multiprocessing.connection
@@ -16,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+import display_helpers as dh
 import kdnode as kd
 import modbus_led as ml
 import plane_icon as pi
@@ -41,6 +43,7 @@ PLANE_CANVAS = 3
 FLIP_EAST_WEST = False
 FLIGHTS_TODAY: set[str] = set()
 FLIGHTS_TODAY_DATE: str = ""
+FLIGHTS_TODAY_FILE = "flights_today.json"
 LOCAL_AIRPORT: str = ""
 PLANE_HEADING = 0
 
@@ -177,62 +180,23 @@ def check_brightness(
         ml.set_brightness(LED_DAY_BRIGHTNESS)
 
 
-def _vertical_indicator(finfo: dict[str, Any]) -> str:
-    """Return ^/v prefix based on vertical speed, or empty for level."""
+def _load_flights_today() -> None:
+    """Load flight counter from disk. Resets if date doesn't match."""
+    global FLIGHTS_TODAY, FLIGHTS_TODAY_DATE
     try:
-        vs = int(finfo.get("vertical_speed", 0))
-    except (ValueError, TypeError):
-        return ""
-    if vs > 100:
-        return "^"
-    if vs < -100:
-        return "v"
-    return ""
+        with open(FLIGHTS_TODAY_FILE) as f:
+            data = json.load(f)
+        if data.get("date") == datetime.now(TZ).date().isoformat():
+            FLIGHTS_TODAY = set(data.get("flights", []))
+            FLIGHTS_TODAY_DATE = data["date"]
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        pass
 
 
-def _altitude_color(altitude: int | str) -> str:
-    """Color by altitude: green (low), yellow (mid), red (high)."""
-    try:
-        alt = int(altitude)
-    except (ValueError, TypeError):
-        return "FF0"
-    if alt < 3000:
-        return "0F0"
-    if alt < 15000:
-        return "FF0"
-    return "F00"
-
-
-def _arriving_message(ori: str, speed_str: str, landed: bool) -> str:
-    if landed:
-        return f"Arriving {LOCAL_AIRPORT}\t{speed_str}"
-    if ori != "NA":
-        return f"Arriving {LOCAL_AIRPORT} from {ori}"
-    return f"Arriving {LOCAL_AIRPORT}"
-
-
-def _departing_message(dest: str) -> str:
-    if dest != "NA":
-        return f"Departing {LOCAL_AIRPORT} -> {dest}"
-    return f"Departing {LOCAL_AIRPORT}"
-
-
-def _flight_exit_message(flight: dict[str, Any]) -> str:
-    """Build context-aware exit message based on local airport."""
-    ori = flight.get("ori", "NA")
-    dest = flight.get("dest", "NA")
-    landed = flight["altitude"] < ut.LANDING_ALTITUDE
-    speed_str = str(flight["speed"]) + " kts"
-
-    if LOCAL_AIRPORT and dest == LOCAL_AIRPORT:
-        return _arriving_message(ori, speed_str, landed)
-    if LOCAL_AIRPORT and ori == LOCAL_AIRPORT:
-        return _departing_message(dest)
-    if landed:
-        return f"Landed\t{speed_str}"
-    if ori != "NA" and dest != "NA":
-        return f"{ori} -> {dest}"
-    return "Out of Monitor Boundary"
+def _save_flights_today() -> None:
+    """Persist flight counter to disk."""
+    with open(FLIGHTS_TODAY_FILE, "w") as f:
+        json.dump({"date": FLIGHTS_TODAY_DATE, "flights": list(FLIGHTS_TODAY)}, f)
 
 
 def display_date_time() -> None:
@@ -273,8 +237,8 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
         0,
         190 - x - w,
         16,
-        _altitude_color(fInfo["altitude"]),
-        f"{_vertical_indicator(fInfo)}{fInfo['altitude']}ft {fInfo['speed']}kts",
+        dh.altitude_color(fInfo["altitude"]),
+        f"{dh.vertical_indicator(fInfo)}{fInfo['altitude']}ft {fInfo['speed']}kts",
         h_align="00",
         font=3,
     )
@@ -321,11 +285,19 @@ def clear_flight(flight_index: str) -> None:
         0,
         192,
         16,
-        _altitude_color(flight["altitude"]),
+        dh.altitude_color(flight["altitude"]),
         f"{flight['flight_number']} {flight['ori']}-{flight['dest']} {flight['aircraft_type']}",
         font=4,
     )
-    ml.show_text(0, 16, 192, 16, "0FF", _flight_exit_message(flight), font=3)
+    ml.show_text(
+        0,
+        16,
+        192,
+        16,
+        "0FF",
+        dh.flight_exit_message(flight, LOCAL_AIRPORT, ut.LANDING_ALTITUDE),
+        font=3,
+    )
     time.sleep(5)
     ml.clear_screen()
 
@@ -398,6 +370,7 @@ def _resolve_flight(
     if findex != findex_old:
         if findex is not None:
             FLIGHTS_TODAY.add(findex)
+            _save_flights_today()
         wait_time = _handle_flight_change(findex, findex_old)
         return findex, fshort, findex, ut.MAX_FOLLOW_PLAN, wait_time
     if findex is not None and fshort is not None:
@@ -412,6 +385,7 @@ def main(wdt_pipe: multiprocessing.connection.Connection) -> None:
     config = ut.get_config()
     if not init(config):
         return
+    _load_flights_today()
     findex_old: str | None = None
     flight_followed = ut.MAX_FOLLOW_PLAN
     gc.collect()
