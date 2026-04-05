@@ -2,18 +2,26 @@ from __future__ import annotations
 
 from typing import Any
 
+_prev_altitude: int | None = None
 
-def vertical_indicator(finfo: dict[str, Any]) -> str:
-    """Return ^/v prefix based on vertical speed, or empty for level."""
+
+def vertical_indicator(altitude: int | str) -> str:
+    """Return ^/v prefix based on altitude change from previous call."""
+    global _prev_altitude
     try:
-        vs = int(finfo.get("vertical_speed", 0))
+        alt = int(altitude)
     except (ValueError, TypeError):
-        return ""
-    if vs > 100:
-        return "^"
-    if vs < -100:
+        return " "
+    if _prev_altitude is None:
+        _prev_altitude = alt
+        return " "
+    diff = alt - _prev_altitude
+    _prev_altitude = alt
+    if diff < -50:
         return "v"
-    return ""
+    if diff > 50:
+        return "^"
+    return " "
 
 
 def altitude_color(altitude: int | str) -> str:

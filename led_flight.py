@@ -238,7 +238,7 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
         190 - x - w,
         16,
         dh.altitude_color(fInfo["altitude"]),
-        f"{dh.vertical_indicator(fInfo)}{fInfo['altitude']}ft {fInfo['speed']}kts",
+        f"{dh.vertical_indicator(fInfo['altitude'])}{fInfo['altitude']}ft {fInfo['speed']}kts",
         h_align="00",
         font=3,
     )
