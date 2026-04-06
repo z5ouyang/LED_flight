@@ -223,9 +223,10 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
     if fInfo["heading"] == "NA":
         return
     x = 64
-    heading = ut.closest_heading(
-        (360 - int(fInfo["heading"])) % 360 if FLIP_EAST_WEST else int(fInfo["heading"])
-    )
+    raw_heading = (360 - int(fInfo["heading"])) % 360 if FLIP_EAST_WEST else int(fInfo["heading"])
+    vdir = dh.vertical_direction(fInfo["altitude"])
+    tilted = _tilt_heading(raw_heading, vdir)
+    heading = ut.closest_heading(tilted)
     img = getattr(pi, "get_plane_" + str(heading))()
     w = len(img)
     if heading != PLANE_HEADING:
@@ -238,10 +239,29 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
         190 - x - w,
         16,
         dh.altitude_color(fInfo["altitude"]),
-        f"{dh.vertical_indicator(fInfo['altitude'])}{fInfo['altitude']}ft {fInfo['speed']}kts",
+        f"{fInfo['altitude']}ft {fInfo['speed']}kts",
         h_align="00",
         font=3,
     )
+
+
+def _tilt_heading(heading: int, vdir: int) -> int:
+    """Offset heading to visually indicate climb (1) or descent (-1).
+
+    Rotates toward screen-up (0°) when climbing, screen-down (180°) when
+    descending.  For headings already on the vertical axis (0°/180°) no
+    offset is applied since the tilt direction would be ambiguous.
+    """
+    if vdir == 0:
+        return heading
+    h = heading % 360
+    if h == 0 or h == 180:
+        return heading
+    # East-ish headings (1-179): negative offset tilts nose up
+    # West-ish headings (181-359): positive offset tilts nose up
+    sign = -1 if 0 < h < 180 else 1
+    offset = sign * 25
+    return (heading + offset * vdir) % 360
 
 
 def show_flight(flight_info: dict[str, Any]) -> None:

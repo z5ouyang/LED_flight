@@ -5,23 +5,23 @@ from typing import Any
 _prev_altitude: int | None = None
 
 
-def vertical_indicator(altitude: int | str) -> str:
-    """Return ^/v prefix based on altitude change from previous call."""
+def vertical_direction(altitude: int | str) -> int:
+    """Return climb/descent direction from altitude change: 1=climbing, -1=descending, 0=level."""
     global _prev_altitude
     try:
         alt = int(altitude)
     except (ValueError, TypeError):
-        return " "
+        return 0
     if _prev_altitude is None:
         _prev_altitude = alt
-        return " "
+        return 0
     diff = alt - _prev_altitude
     _prev_altitude = alt
     if diff < -50:
-        return "v"
+        return -1
     if diff > 50:
-        return "^"
-    return " "
+        return 1
+    return 0
 
 
 def altitude_color(altitude: int | str) -> str:
