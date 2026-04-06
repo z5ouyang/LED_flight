@@ -260,7 +260,7 @@ def _tilt_heading(heading: int, vdir: int) -> int:
     # East-ish headings (1-179): negative offset tilts nose up
     # West-ish headings (181-359): positive offset tilts nose up
     sign = -1 if 0 < h < 180 else 1
-    offset = sign * 25
+    offset = sign * 40
     return (heading + offset * vdir) % 360
 
 
