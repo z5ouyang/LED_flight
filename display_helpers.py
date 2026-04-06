@@ -17,9 +17,9 @@ def vertical_direction(altitude: int | str) -> int:
         return 0
     diff = alt - _prev_altitude
     _prev_altitude = alt
-    if diff < -50:
+    if diff < -20:
         return -1
-    if diff > 50:
+    if diff > 20:
         return 1
     return 0
 
