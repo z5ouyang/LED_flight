@@ -16,7 +16,7 @@ HTTP_HEADERS = {
      "cache-control": "no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
      "accept": "application/json"
 }
-FLIGHT_SHORT_KEYS = ['ICAO_aircraft','latitude','logitude','heading','altitude','speed','squawk','radar','aircraft_type','aircraft_reg','timestamp',
+FLIGHT_SHORT_KEYS = ['ICAO_aircraft','latitude','longitude','heading','altitude','speed','squawk','radar','aircraft_type','aircraft_reg','timestamp',
         'ori','dest','flight_number','vertical_speed','squawk_status','callsign','ADS_B','ICAO_airline']
 TIME_ZONE_SEARCH_HEAD="https://api.timezonedb.com/v2.1/get-time-zone?key=APIKEY&format=json&by=zone&zone="
 IATA_INFO=None
