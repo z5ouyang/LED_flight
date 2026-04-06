@@ -88,7 +88,7 @@ def git_sync():
                 print("GITHUB error for", f)
                 print(''.join(traceback.format_exception(None, e, e.__traceback__)))
             else:
-                log("GITHUB error for", f)
+                log(f"GITHUB error for {f}")
                 log(''.join(traceback.format_exception(None, e, e.__traceback__)))
         finally:
             if res is not None:
