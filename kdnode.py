@@ -131,3 +131,24 @@ def init_iata_info() -> None:
     elif "iata_us_info.json" in os.listdir("."):
         with open("iata_us_info.json") as f:
             IATA_INFO = dict_to_node(json.load(f))
+
+
+def build_iata_lookup(
+    node: KDNode | None,
+    result: dict[str, tuple[float, float]] | None = None,
+) -> dict[str, tuple[float, float]]:
+    """Walk the IATA KD-tree and return a {iata_code: (lat, lon)} dict.
+
+    The KD-tree is optimized for spatial (nearest-neighbor) queries; this
+    flat dict lets us look up coordinates by IATA code for distance stats.
+    """
+    if result is None:
+        result = {}
+    if node is None:
+        return result
+    # Point format: [lat, lon, iata, city-country]
+    iata = str(node.point[2])
+    result[iata] = (float(node.point[0]), float(node.point[1]))
+    build_iata_lookup(node.left, result)
+    build_iata_lookup(node.right, result)
+    return result

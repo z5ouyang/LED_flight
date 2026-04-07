@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+import daily_stats as stats
 import display_helpers as dh
 import kdnode as kd
 import modbus_led as ml
@@ -203,9 +204,11 @@ def _save_flights_today() -> None:
 def display_date_time() -> None:
     dt = datetime.now(TZ)
     ml.show_text(0, 0, 64, 16, "FF0", f"{dt.strftime('%b')} {dt.day}", font=4)
-    ml.show_text(64, 0, 64, 16, "FF0", f"{len(FLIGHTS_TODAY)} flt", font=4)
-    ml.show_text(128, 0, 64, 16, "FF0", dt.strftime("%a"), font=4)
-    ml.show_text(64, 16, 64, 16, "FF0", dt.strftime("%H:%M"), font=4)
+    ml.show_text(64, 0, 64, 16, "FF0", dt.strftime("%H:%M"), font=4)
+    ml.show_text(128, 0, 64, 16, "FF0", f"{len(FLIGHTS_TODAY)} flt", font=4)
+    stat_text = stats.format_stat(stats.next_stat_index())
+    ml.clear_area(0, 16, 192, 16)
+    ml.show_text(0, 16, 192, 16, "0FF", stat_text, font=4)
 
 
 def plane_animation(heading: int | None = None) -> None:
@@ -329,6 +332,10 @@ def init(config: dict[str, Any]) -> bool:
         local_airport_info = kd.nearest(kd.IATA_INFO, [center_lat, center_lng])
         LOCAL_AIRPORT = local_airport_info[2] if local_airport_info else ""
         logger.info("Local airport: %s", LOCAL_AIRPORT)
+        stats.init(
+            home_coord=(center_lat, center_lng),
+            airport_coords=kd.build_iata_lookup(kd.IATA_INFO),
+        )
         ml.get_GID()
         ml.set_text_color("FF0")
         ml.delete_canvas(SHORT_CANVAS)
@@ -371,6 +378,7 @@ def _handle_flight_change(
         return ut.WAIT_TIME
     finfo = ut.get_flight_detail(requests, findex, DEBUG_VERBOSE=DEBUG_VERBOSE)
     if finfo is not None:
+        stats.record_flight(finfo)
         show_flight(finfo)
         return ut.UPDATE_TIME
     return ut.WAIT_TIME
