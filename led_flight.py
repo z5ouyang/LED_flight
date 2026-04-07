@@ -222,11 +222,12 @@ def plane_animation(heading: int | None = None) -> None:
     ml.delete_programe(PLANE_CANVAS)
 
 
-ARROW_X = 77
-ARROW_Y = 4
-ARROW_W = 5
-ARROW_H = 8
-TEXT_X = 84
+VDIR_X = 176
+VDIR_Y = 3
+VDIR_W = 14
+VDIR_H = 10
+TEXT_X = 78
+TEXT_RIGHT = 174
 
 
 def display_alt_sp(fInfo: dict[str, Any]) -> None:
@@ -244,18 +245,18 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
         PLANE_HEADING = heading
     vdir = dh.vertical_direction(fInfo["altitude"])
     if vdir != PLANE_VDIR:
-        ml.clear_area(ARROW_X, ARROW_Y, ARROW_W, ARROW_H)
+        ml.clear_area(VDIR_X, VDIR_Y, VDIR_W, VDIR_H)
         if vdir == 1:
             ml.set_paint_color("0F0")
-            ml.show_image(ARROW_X, ARROW_Y, pi.get_arrow_up())
+            ml.show_image(VDIR_X, VDIR_Y, pi.get_plane_climbing())
         elif vdir == -1:
             ml.set_paint_color("F00")
-            ml.show_image(ARROW_X, ARROW_Y, pi.get_arrow_down())
+            ml.show_image(VDIR_X, VDIR_Y, pi.get_plane_descending())
         PLANE_VDIR = vdir
     ml.show_text(
         TEXT_X,
         0,
-        190 - TEXT_X,
+        TEXT_RIGHT - TEXT_X,
         16,
         dh.altitude_color(fInfo["altitude"]),
         f"{fInfo['altitude']}ft {fInfo['speed']}kts",
