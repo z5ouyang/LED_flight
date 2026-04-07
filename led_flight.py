@@ -222,11 +222,13 @@ def plane_animation(heading: int | None = None) -> None:
     ml.delete_programe(PLANE_CANVAS)
 
 
+DIR_X = 0
+DIR_Y = 2
 VDIR_X = 176
 VDIR_Y = 3
 VDIR_W = 14
-VDIR_H = 10
-TEXT_X = 78
+VDIR_H = 11
+TEXT_X = 76
 TEXT_RIGHT = 174
 
 
@@ -234,14 +236,13 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
     global PLANE_HEADING, PLANE_VDIR
     if fInfo["heading"] == "NA":
         return
-    x = 64
     raw_heading = (360 - int(fInfo["heading"])) % 360 if FLIP_EAST_WEST else int(fInfo["heading"])
     heading = ut.closest_heading(raw_heading)
     img = getattr(pi, "get_plane_" + str(heading))()
     w = len(img)
     if heading != PLANE_HEADING:
-        ml.clear_area(x, 2, w, w)
-        ml.show_image(x, 2, img)
+        ml.clear_area(DIR_X, DIR_Y, w, w)
+        ml.show_image(DIR_X, DIR_Y, img)
         PLANE_HEADING = heading
     vdir = dh.vertical_direction(fInfo["altitude"])
     if vdir != PLANE_VDIR:
@@ -342,7 +343,7 @@ def init(config: dict[str, Any]) -> bool:
         ml.delete_canvas(SHORT_CANVAS)
         ml.delete_canvas(LONG_CANVAS)
         ml.delete_canvas(PLANE_CANVAS)
-        ml.create_canvas(SHORT_CANVAS, 0, 0, 64, 16)
+        ml.create_canvas(SHORT_CANVAS, 14, 0, 60, 16)
         ml.create_canvas(LONG_CANVAS, 0, 16, 192, 16)
         ml.create_canvas(PLANE_CANVAS, 0, 0, 192, 32)
         FLIP_EAST_WEST = bool(config.get("flip_east_west"))
