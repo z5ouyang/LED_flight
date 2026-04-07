@@ -3,25 +3,44 @@ from __future__ import annotations
 from typing import Any
 
 _prev_altitude: int | None = None
+_prev_direction: int = 0
+
+
+def reset_vertical(initial_dir: int = 0) -> None:
+    """Reset vertical tracking for a new flight, optionally seeding the direction.
+
+    Called when a new flight is detected so the first `vertical_direction()`
+    call returns the seeded value rather than a stale delta from the previous
+    flight.  The seed should come from trail data in the FR24 detail response.
+    """
+    global _prev_altitude, _prev_direction
+    _prev_altitude = None
+    _prev_direction = initial_dir
 
 
 def vertical_direction(altitude: int | str) -> int:
-    """Return climb/descent direction from altitude change: 1=climbing, -1=descending, 0=level."""
-    global _prev_altitude
+    """Return climb/descent direction: 1=climbing, -1=descending, 0=level.
+
+    Sticky — when the altitude delta is below the threshold, keeps the
+    previous direction instead of flipping to 0.  This prevents flicker
+    during brief level segments and preserves the trail-seeded initial
+    direction until real altitude change occurs.
+    """
+    global _prev_altitude, _prev_direction
     try:
         alt = int(altitude)
     except (ValueError, TypeError):
-        return 0
+        return _prev_direction
     if _prev_altitude is None:
         _prev_altitude = alt
-        return 0
+        return _prev_direction
     diff = alt - _prev_altitude
     _prev_altitude = alt
     if diff < -20:
-        return -1
-    if diff > 20:
-        return 1
-    return 0
+        _prev_direction = -1
+    elif diff > 20:
+        _prev_direction = 1
+    return _prev_direction
 
 
 def altitude_color(altitude: int | str) -> str:

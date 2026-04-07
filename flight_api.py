@@ -216,6 +216,25 @@ def _resolve_flight_number(
     return "NA"
 
 
+def _initial_vdir_from_trail(trail: Any) -> int:
+    """Compute initial climb/descent direction from FR24 trail history.
+
+    Compares trail[0]['alt'] (latest) to trail[1]['alt'] (previous).
+    Returns 1 if climbing, -1 if descending, 0 if level or unavailable.
+    """
+    try:
+        latest = int(trail[0]["alt"])
+        prev = int(trail[1]["alt"])
+    except (TypeError, KeyError, IndexError, ValueError):
+        return 0
+    diff = latest - prev
+    if diff < -20:
+        return -1
+    if diff > 20:
+        return 1
+    return 0
+
+
 def _build_flight_details(
     flight: dict[str, Any],
     flight_index: str,
@@ -246,6 +265,7 @@ def _build_flight_details(
         "eta": get_dict_value(flight, ["time", "estimated", "arrival"]),
         "ori": re.sub("^NA$", "", ori_iata),
         "dest": re.sub("^NA$", "", dest_iata),
+        "initial_vdir": _initial_vdir_from_trail(get_dict_value(flight, ["trail"])),
     }
 
 

@@ -46,6 +46,7 @@ FLIGHTS_TODAY_DATE: str = ""
 FLIGHTS_TODAY_FILE = "flights_today.json"
 LOCAL_AIRPORT: str = ""
 PLANE_HEADING = 0
+PLANE_VDIR = -99  # -99 = force redraw on next display
 
 
 def get_serial() -> str:
@@ -218,25 +219,40 @@ def plane_animation(heading: int | None = None) -> None:
     ml.delete_programe(PLANE_CANVAS)
 
 
+ARROW_X = 77
+ARROW_Y = 4
+ARROW_W = 5
+ARROW_H = 8
+TEXT_X = 84
+
+
 def display_alt_sp(fInfo: dict[str, Any]) -> None:
-    global PLANE_HEADING
+    global PLANE_HEADING, PLANE_VDIR
     if fInfo["heading"] == "NA":
         return
     x = 64
     raw_heading = (360 - int(fInfo["heading"])) % 360 if FLIP_EAST_WEST else int(fInfo["heading"])
-    vdir = dh.vertical_direction(fInfo["altitude"])
-    tilted = _tilt_heading(raw_heading, vdir)
-    heading = ut.closest_heading(tilted)
+    heading = ut.closest_heading(raw_heading)
     img = getattr(pi, "get_plane_" + str(heading))()
     w = len(img)
     if heading != PLANE_HEADING:
         ml.clear_area(x, 2, w, w)
         ml.show_image(x, 2, img)
         PLANE_HEADING = heading
+    vdir = dh.vertical_direction(fInfo["altitude"])
+    if vdir != PLANE_VDIR:
+        ml.clear_area(ARROW_X, ARROW_Y, ARROW_W, ARROW_H)
+        if vdir == 1:
+            ml.set_paint_color("0F0")
+            ml.show_image(ARROW_X, ARROW_Y, pi.get_arrow_up())
+        elif vdir == -1:
+            ml.set_paint_color("F00")
+            ml.show_image(ARROW_X, ARROW_Y, pi.get_arrow_down())
+        PLANE_VDIR = vdir
     ml.show_text(
-        x + w + 2,
+        TEXT_X,
         0,
-        190 - x - w,
+        190 - TEXT_X,
         16,
         dh.altitude_color(fInfo["altitude"]),
         f"{fInfo['altitude']}ft {fInfo['speed']}kts",
@@ -245,28 +261,11 @@ def display_alt_sp(fInfo: dict[str, Any]) -> None:
     )
 
 
-def _tilt_heading(heading: int, vdir: int) -> int:
-    """Offset heading to visually indicate climb (1) or descent (-1).
-
-    Rotates toward screen-up (0°) when climbing, screen-down (180°) when
-    descending.  For headings already on the vertical axis (0°/180°) no
-    offset is applied since the tilt direction would be ambiguous.
-    """
-    if vdir == 0:
-        return heading
-    h = heading % 360
-    if h == 0 or h == 180:
-        return heading
-    # East-ish headings (1-179): negative offset tilts nose up
-    # West-ish headings (181-359): positive offset tilts nose up
-    sign = -1 if 0 < h < 180 else 1
-    offset = sign * 40
-    return (heading + offset * vdir) % 360
-
-
 def show_flight(flight_info: dict[str, Any]) -> None:
-    global PLANE_HEADING
+    global PLANE_HEADING, PLANE_VDIR
     PLANE_HEADING = -1
+    PLANE_VDIR = -99
+    dh.reset_vertical(flight_info.get("initial_vdir", 0))
     logger.debug("%s %s", datetime.now(TZ), flight_info)
     ml.delete_programe(SHORT_CANVAS)
     ml.delete_programe(LONG_CANVAS)
