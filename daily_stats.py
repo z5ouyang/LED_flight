@@ -221,6 +221,12 @@ def next_stat_index() -> int:
     return idx
 
 
+def _aircraft_suffix(code: str) -> str:
+    """Append ' <model name>' if code has a known description, else empty."""
+    name = aircraft_size.get_name(code)
+    return f" {name}" if name else ""
+
+
 def _fmt_top(key: str, label: str) -> str:
     counts = _STATE.get(key, {})
     if not counts:
@@ -229,12 +235,21 @@ def _fmt_top(key: str, label: str) -> str:
     return f"{label}: {top_name} x{top_count}"
 
 
-def _fmt_rare(key: str, label: str) -> str:
-    counts = _STATE.get(key, {})
+def _fmt_top_aircraft(label: str) -> str:
+    counts = _STATE.get("aircraft_types", {})
+    if not counts:
+        return f"{label}: {EMPTY}"
+    top_name, top_count = max(counts.items(), key=lambda kv: kv[1])
+    return f"{label}: {top_name}{_aircraft_suffix(top_name)} x{top_count}"
+
+
+def _fmt_rare_aircraft(label: str) -> str:
+    counts = _STATE.get("aircraft_types", {})
     rares = sorted(k for k, v in counts.items() if v == 1)
     if not rares:
         return f"{label}: {EMPTY}"
-    return f"{label}: {rares[0]}"
+    code = rares[0]
+    return f"{label}: {code}{_aircraft_suffix(code)}"
 
 
 def _fmt_peak_hour() -> str:
@@ -267,12 +282,16 @@ def _fmt_furthest() -> str:
 
 def _fmt_biggest() -> str:
     v = _STATE.get("biggest")
-    return f"BIG: {v['code']} ({v['wingspan']}m)" if v else f"BIG: {EMPTY}"
+    if not v:
+        return f"BIG: {EMPTY}"
+    return f"BIG: {v['code']}{_aircraft_suffix(v['code'])} ({v['wingspan']}m)"
 
 
 def _fmt_smallest() -> str:
     v = _STATE.get("smallest")
-    return f"SMALL: {v['code']} ({v['wingspan']}m)" if v else f"SMALL: {EMPTY}"
+    if not v:
+        return f"SMALL: {EMPTY}"
+    return f"SMALL: {v['code']}{_aircraft_suffix(v['code'])} ({v['wingspan']}m)"
 
 
 def _fmt_longest_route() -> str:
@@ -287,7 +306,7 @@ def _fmt_shortest_route() -> str:
 
 _FORMATTERS: list[Callable[[], str]] = [
     lambda: _fmt_top("origins", "MOST FROM"),
-    lambda: _fmt_top("aircraft_types", "TOP"),
+    lambda: _fmt_top_aircraft("TOP"),
     _fmt_max_altitude,
     _fmt_fastest,
     _fmt_first_flight,
@@ -298,7 +317,7 @@ _FORMATTERS: list[Callable[[], str]] = [
     _fmt_longest_route,
     _fmt_shortest_route,
     lambda: _fmt_top("airlines", "AIRLINE"),
-    lambda: _fmt_rare("aircraft_types", "RARE"),
+    lambda: _fmt_rare_aircraft("RARE"),
 ]
 
 

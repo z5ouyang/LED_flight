@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+import brightness
 import daily_stats as stats
 import display_helpers as dh
 import kdnode as kd
@@ -33,10 +34,8 @@ logger = logging.getLogger(__name__)
 DEBUG_VERBOSE = False  # 0: no print out; 1: important; 2: everything
 TZ = ZoneInfo("America/Los_Angeles")
 TIMEOUT = 60
-LED_CURR_BRIGHTNESS = 500
 LED_DAY_BRIGHTNESS = 500
 LED_NIGHT_BRIGHTNESS = 10
-LED_SUN_RISE = None
 PLANE_SPEED = 0.001
 SHORT_CANVAS = 1
 LONG_CANVAS = 2
@@ -127,61 +126,6 @@ def set_time_zone(tz: str) -> None:
     time.sleep(5)
 
 
-def _update_sunrise(dt: datetime, geo_loc: list[float]) -> None:
-    global LED_SUN_RISE
-    try:
-        params: dict[str, str] = {
-            "lat": str((geo_loc[0] + geo_loc[1]) / 2),
-            "lng": str((geo_loc[2] + geo_loc[3]) / 2),
-            "date": dt.date().isoformat(),
-            "formatted": "0",
-        }
-        response = requests.get(
-            "https://api.sunrise-sunset.org/json",
-            params=params,
-            timeout=10,
-        )
-        try:
-            sunrise = datetime.fromisoformat(response.json()["results"]["sunrise"]).astimezone(TZ)
-            LED_SUN_RISE = {dt.date().isoformat(): sunrise}
-        finally:
-            response.close()
-    except (requests.RequestException, KeyError, ValueError):
-        LED_SUN_RISE = None
-
-
-def _is_night(dt: datetime, night_time: list[int]) -> bool:
-    before_sunrise = (
-        dt.hour < night_time[1]
-        if LED_SUN_RISE is None
-        else dt < LED_SUN_RISE[dt.date().isoformat()]
-    )
-    start, end = night_time[0], night_time[1]
-    if start < end:
-        return start <= dt.hour and before_sunrise
-    return start <= dt.hour or before_sunrise
-
-
-def check_brightness(
-    night_time: list[int],
-    geo_loc: list[float] | None = None,
-) -> None:
-    global LED_CURR_BRIGHTNESS
-    dt = datetime.now(TZ)
-    needs_sunrise = LED_SUN_RISE is None or dt.date().isoformat() not in LED_SUN_RISE
-    if geo_loc is not None and needs_sunrise:
-        _update_sunrise(dt, geo_loc)
-    is_night = _is_night(dt, night_time)
-    if is_night and LED_CURR_BRIGHTNESS != LED_NIGHT_BRIGHTNESS:
-        logger.debug("Night Brightness")
-        LED_CURR_BRIGHTNESS = LED_NIGHT_BRIGHTNESS
-        ml.set_brightness(LED_NIGHT_BRIGHTNESS)
-    elif not is_night and LED_CURR_BRIGHTNESS != LED_DAY_BRIGHTNESS:
-        logger.debug("Day Brightness")
-        LED_CURR_BRIGHTNESS = LED_DAY_BRIGHTNESS
-        ml.set_brightness(LED_DAY_BRIGHTNESS)
-
-
 def _load_flights_today() -> None:
     """Load flight counter from disk. Resets if date doesn't match."""
     global FLIGHTS_TODAY, FLIGHTS_TODAY_DATE
@@ -207,8 +151,21 @@ def display_date_time() -> None:
     ml.show_text(64, 0, 64, 16, "FF0", dt.strftime("%H:%M"), font=4)
     ml.show_text(128, 0, 64, 16, "FF0", f"{len(FLIGHTS_TODAY)} flt", font=4)
     stat_text = stats.format_stat(stats.next_stat_index())
+    ml.delete_programe(LONG_CANVAS)
     ml.clear_area(0, 16, 192, 16)
-    ml.show_text(0, 16, 192, 16, "0FF", stat_text, font=4)
+    # Scroll if wider than viewport — same programme primitive used for flight labels
+    ml.create_txt_programe(
+        LONG_CANVAS,
+        "0FF",
+        2,
+        5,
+        0,
+        2,
+        99,
+        stat_text,
+        h_align="00",
+        font=4,
+    )
 
 
 def plane_animation(heading: int | None = None) -> None:
@@ -339,6 +296,7 @@ def init(config: dict[str, Any]) -> bool:
             airport_coords=kd.build_iata_lookup(kd.IATA_INFO),
             tz=TZ,
         )
+        brightness.init(tz=TZ, day=LED_DAY_BRIGHTNESS, night=LED_NIGHT_BRIGHTNESS)
         ml.get_GID()
         ml.set_text_color("FF0")
         ml.delete_canvas(SHORT_CANVAS)
@@ -425,7 +383,7 @@ def main(wdt_pipe: multiprocessing.connection.Connection) -> None:
         if today != FLIGHTS_TODAY_DATE:
             FLIGHTS_TODAY.clear()
             FLIGHTS_TODAY_DATE = today
-        check_brightness(config["display_time_night"], config["geo_loc"])
+        brightness.check(config["display_time_night"], config["geo_loc"])
         findex, fshort, req_success = ut.get_flights(
             requests, config["geo_loc"], config, DEBUG_VERBOSE=DEBUG_VERBOSE
         )

@@ -1,9 +1,13 @@
-"""Aircraft wingspan lookup for biggest/smallest-plane daily stats.
+"""Aircraft wingspan + model-name lookup for daily stats.
 
 Maps ICAO aircraft type codes (as reported by FlightRadar24's
-``aircraft.model.code`` field) to wingspan in whole meters.  Only the
-~80 most common commercial and general-aviation types are covered;
-unknown codes are simply excluded from the big/small ranking.
+``aircraft.model.code`` field) to wingspan in whole meters.  A parallel
+``NAME_BY_ICAO`` dict maps the same codes to human-readable model names
+so stats like "TOP: B738" can scroll "Boeing 737-800" alongside them.
+
+Only the ~80 most common commercial and general-aviation types are
+covered; unknown codes are simply excluded from the big/small ranking
+and show the raw code without a description.
 """
 
 from __future__ import annotations
@@ -126,6 +130,129 @@ SIZE_BY_ICAO: dict[str, int] = {
 }
 
 
+NAME_BY_ICAO: dict[str, str] = {
+    # Single-engine piston / small GA
+    "C172": "Cessna 172",
+    "C182": "Cessna 182",
+    "C208": "Cessna Caravan",
+    "PA28": "Piper Cherokee",
+    "PA34": "Piper Seneca",
+    "PA44": "Piper Seminole",
+    "PA46": "Piper Malibu",
+    "SR20": "Cirrus SR20",
+    "SR22": "Cirrus SR22",
+    "DA40": "Diamond DA40",
+    "DA42": "Diamond DA42",
+    "BE36": "Beechcraft Bonanza",
+    "BE35": "Beechcraft Bonanza",
+    "BE58": "Beechcraft Baron",
+    "BE33": "Beechcraft Debonair",
+    "M20P": "Mooney M20",
+    "M20T": "Mooney M20",
+    "PC12": "Pilatus PC-12",
+    "TBM7": "Daher TBM 700",
+    "TBM8": "Daher TBM 850",
+    "TBM9": "Daher TBM 900",
+    # Twin turboprops / regional
+    "DH8A": "Dash 8-100",
+    "DH8B": "Dash 8-200",
+    "DH8C": "Dash 8-300",
+    "DH8D": "Dash 8 Q400",
+    "AT42": "ATR 42",
+    "AT43": "ATR 42-300",
+    "AT45": "ATR 42-500",
+    "AT72": "ATR 72",
+    "AT75": "ATR 72-500",
+    "AT76": "ATR 72-600",
+    "SF34": "Saab 340",
+    "SF50": "Cirrus Vision Jet",
+    "E120": "Embraer Brasilia",
+    "DHC6": "DHC-6 Twin Otter",
+    "SW4": "Swearingen Metroliner",
+    "B190": "Beechcraft 1900",
+    # Regional jets
+    "CRJ1": "Bombardier CRJ-100",
+    "CRJ2": "Bombardier CRJ-200",
+    "CRJ7": "Bombardier CRJ-700",
+    "CRJ9": "Bombardier CRJ-900",
+    "CRJX": "Bombardier CRJ-1000",
+    "E135": "Embraer ERJ-135",
+    "E145": "Embraer ERJ-145",
+    "E170": "Embraer E170",
+    "E75L": "Embraer E175 long",
+    "E75S": "Embraer E175 short",
+    "E175": "Embraer E175",
+    "E190": "Embraer E190",
+    "E195": "Embraer E195",
+    "BCS1": "Airbus A220-100",
+    "BCS3": "Airbus A220-300",
+    "A220": "Airbus A220",
+    # Narrow-body
+    "A318": "Airbus A318",
+    "A319": "Airbus A319",
+    "A320": "Airbus A320",
+    "A321": "Airbus A321",
+    "A19N": "Airbus A319neo",
+    "A20N": "Airbus A320neo",
+    "A21N": "Airbus A321neo",
+    "B712": "Boeing 717",
+    "B732": "Boeing 737-200",
+    "B733": "Boeing 737-300",
+    "B734": "Boeing 737-400",
+    "B735": "Boeing 737-500",
+    "B736": "Boeing 737-600",
+    "B737": "Boeing 737-700",
+    "B738": "Boeing 737-800",
+    "B739": "Boeing 737-900",
+    "B73W": "Boeing 737-700W",
+    "B37M": "Boeing 737 MAX 7",
+    "B38M": "Boeing 737 MAX 8",
+    "B39M": "Boeing 737 MAX 9",
+    "B3XM": "Boeing 737 MAX 10",
+    # Wide-body twin
+    "B752": "Boeing 757-200",
+    "B753": "Boeing 757-300",
+    "B762": "Boeing 767-200",
+    "B763": "Boeing 767-300",
+    "B764": "Boeing 767-400",
+    "B772": "Boeing 777-200",
+    "B773": "Boeing 777-300",
+    "B77L": "Boeing 777-200LR",
+    "B77W": "Boeing 777-300ER",
+    "B778": "Boeing 777-8",
+    "B779": "Boeing 777-9",
+    "B788": "Boeing 787-8",
+    "B789": "Boeing 787-9",
+    "B78X": "Boeing 787-10",
+    "A306": "Airbus A300-600",
+    "A30B": "Airbus A300",
+    "A310": "Airbus A310",
+    "A332": "Airbus A330-200",
+    "A333": "Airbus A330-300",
+    "A338": "Airbus A330-800",
+    "A339": "Airbus A330-900",
+    "A351": "Airbus A350-1000",
+    "A359": "Airbus A350-900",
+    "A35K": "Airbus A350-1000",
+    # Wide-body four-engine
+    "A342": "Airbus A340-200",
+    "A343": "Airbus A340-300",
+    "A345": "Airbus A340-500",
+    "A346": "Airbus A340-600",
+    "B741": "Boeing 747-100",
+    "B742": "Boeing 747-200",
+    "B743": "Boeing 747-300",
+    "B744": "Boeing 747-400",
+    "B748": "Boeing 747-8",
+    "A388": "Airbus A380",
+}
+
+
 def get_wingspan(icao_code: str) -> int | None:
     """Return wingspan in meters for the given ICAO code, or None if unknown."""
     return SIZE_BY_ICAO.get(icao_code)
+
+
+def get_name(icao_code: str) -> str | None:
+    """Return human-readable model name for the given ICAO code, or None if unknown."""
+    return NAME_BY_ICAO.get(icao_code)
