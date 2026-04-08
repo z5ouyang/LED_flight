@@ -337,6 +337,7 @@ def init(config: dict[str, Any]) -> bool:
         stats.init(
             home_coord=(center_lat, center_lng),
             airport_coords=kd.build_iata_lookup(kd.IATA_INFO),
+            tz=TZ,
         )
         ml.get_GID()
         ml.set_text_color("FF0")

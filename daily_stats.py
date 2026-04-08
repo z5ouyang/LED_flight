@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, tzinfo
 from typing import Any
 
 import aircraft_size
@@ -28,22 +28,34 @@ _STATE: dict[str, Any] = {}
 _STAT_INDEX: int = 0
 _HOME_COORD: tuple[float, float] | None = None
 _AIRPORT_COORDS: dict[str, tuple[float, float]] = {}
+_TZ: tzinfo | None = None
 
 
 def init(
     home_coord: tuple[float, float] | None,
     airport_coords: dict[str, tuple[float, float]],
+    tz: tzinfo,
 ) -> None:
-    """Initialize module state with home location and airport lookup."""
-    global _HOME_COORD, _AIRPORT_COORDS, _STAT_INDEX
+    """Initialize module state with home location, airport lookup, and timezone."""
+    global _HOME_COORD, _AIRPORT_COORDS, _TZ, _STAT_INDEX
     _HOME_COORD = home_coord
     _AIRPORT_COORDS = airport_coords
+    _TZ = tz
     _load()
     _STAT_INDEX = int(_STATE.get("stat_index", 0))
 
 
+def _now() -> datetime:
+    """Return current local datetime in the configured timezone.
+
+    The Pi may be running in UTC but the daily rollover must happen at
+    local midnight — all stats calculations go through this helper.
+    """
+    return datetime.now(_TZ)
+
+
 def _today_str() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    return _now().strftime("%Y-%m-%d")
 
 
 def _empty_state() -> dict[str, Any]:
@@ -131,7 +143,7 @@ def _record_extremes(flight_info: dict[str, Any]) -> None:
 
 
 def _record_time(flight_info: dict[str, Any]) -> None:
-    now = datetime.now()
+    now = _now()
     if _STATE.get("first_flight") is None:
         _STATE["first_flight"] = {
             "time": now.strftime("%H:%M"),
