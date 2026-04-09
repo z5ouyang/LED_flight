@@ -49,6 +49,10 @@ def main() -> None:
     ml.get_GID()
     ml.set_brightness(400)
     ml.set_text_color("FF0")
+    # Remove any leftover programmes/canvases from a prior led_flight.py run
+    for wid in (1, 2, 3, 4):
+        ml.delete_programe(wid)
+        ml.delete_canvas(wid)
     ml.clear_screen()
 
     ml.show_text(0, 0, 192, 16, "0F0", "SMALL:", h_align="00", font=4)
