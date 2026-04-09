@@ -40,6 +40,8 @@ PLANE_SPEED = 0.001
 SHORT_CANVAS = 1
 LONG_CANVAS = 2
 PLANE_CANVAS = 3
+STAT_SCROLL_CANVAS = 4
+STAT_LABEL_W = 80  # pixels reserved for pinned label on idle row 2
 FLIP_EAST_WEST = False
 FLIGHTS_TODAY: set[str] = set()
 FLIGHTS_TODAY_DATE: str = ""
@@ -150,22 +152,28 @@ def display_date_time() -> None:
     ml.show_text(0, 0, 64, 16, "FF0", f"{dt.strftime('%b')} {dt.day}", font=4)
     ml.show_text(64, 0, 64, 16, "FF0", dt.strftime("%H:%M"), font=4)
     ml.show_text(128, 0, 64, 16, "FF0", f"{len(FLIGHTS_TODAY)} flt", font=4)
-    stat_text = stats.format_stat(stats.next_stat_index())
+    label, content = stats.format_stat_parts(stats.next_stat_index())
     ml.delete_programe(LONG_CANVAS)
+    ml.delete_programe(STAT_SCROLL_CANVAS)
     ml.clear_area(0, 16, 192, 16)
-    # Scroll if wider than viewport — same programme primitive used for flight labels
-    ml.create_txt_programe(
-        LONG_CANVAS,
-        "0FF",
-        2,
-        5,
-        0,
-        2,
-        99,
-        stat_text,
-        h_align="00",
-        font=4,
-    )
+    if label:
+        # Pin label at left, scroll content in its own canvas to the right
+        ml.show_text(0, 16, STAT_LABEL_W, 16, "0FF", label, h_align="00", font=4)
+        ml.create_txt_programe(
+            STAT_SCROLL_CANVAS,
+            "0FF",
+            2,
+            3,
+            30,
+            2,
+            99,
+            content,
+            h_align="00",
+            font=4,
+        )
+    else:
+        # Short stat — render statically across the full row
+        ml.show_text(0, 16, 192, 16, "0FF", content, h_align="00", font=4)
 
 
 def plane_animation(heading: int | None = None) -> None:
@@ -302,9 +310,11 @@ def init(config: dict[str, Any]) -> bool:
         ml.delete_canvas(SHORT_CANVAS)
         ml.delete_canvas(LONG_CANVAS)
         ml.delete_canvas(PLANE_CANVAS)
+        ml.delete_canvas(STAT_SCROLL_CANVAS)
         ml.create_canvas(SHORT_CANVAS, 14, 0, 60, 16)
         ml.create_canvas(LONG_CANVAS, 0, 16, 192, 16)
         ml.create_canvas(PLANE_CANVAS, 0, 0, 192, 32)
+        ml.create_canvas(STAT_SCROLL_CANVAS, STAT_LABEL_W + 2, 16, 192 - STAT_LABEL_W - 2, 16)
         FLIP_EAST_WEST = bool(config.get("flip_east_west"))
         ml.DEBUG_VERBOSE = DEBUG_VERBOSE
         if not check_wifi():
