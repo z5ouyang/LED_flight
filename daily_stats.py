@@ -329,22 +329,16 @@ def format_stat(index: int) -> str:
     return EMPTY
 
 
-# Rotation indexes whose content portion is long enough to need scrolling
-# (aircraft-code stats with inlined model descriptions).  The display code
-# pins the label at the left and scrolls just the content region for these.
-_SCROLLING_INDEXES = {1, 7, 8, 12}
-
-
 def format_stat_parts(index: int) -> tuple[str, str]:
-    """Return (label, content) split at the first ": " for scrolling stats.
+    """Return (label, content) for a stat by splitting at the first ": ".
 
-    For stats in :data:`_SCROLLING_INDEXES`, the label is pinned and only
-    the content scrolls.  For all other stats, the label is the empty
-    string and the full text is returned as the content (rendered
-    statically by the caller).
+    Every stat is split so the caller can pin the label and render the
+    content with a unified scroll-in animation.  If the stat text has no
+    ": " separator (shouldn't happen, but defensive), the label is empty
+    and the whole text is returned as content.
     """
     text = format_stat(index)
-    if index not in _SCROLLING_INDEXES or ": " not in text:
+    if ": " not in text:
         return ("", text)
     label, content = text.split(": ", 1)
     return (f"{label}:", content)

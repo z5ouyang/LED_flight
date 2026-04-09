@@ -157,29 +157,41 @@ def display_date_time() -> None:
     ml.delete_programe(LONG_CANVAS)
     ml.delete_programe(STAT_SCROLL_CANVAS)
     ml.clear_area(0, 16, 192, 16)
-    if label:
-        # Recreate scroll canvas right after the current label's end so the
-        # content starts flush against the label instead of a fixed gap.
-        label_w = len(label) * STAT_CHAR_W
-        scroll_x = label_w + STAT_LABEL_PAD
-        ml.show_text(0, 16, label_w, 16, "0FF", label, h_align="00", font=4)
-        ml.delete_canvas(STAT_SCROLL_CANVAS)
-        ml.create_canvas(STAT_SCROLL_CANVAS, scroll_x, 16, 192 - scroll_x, 16)
+    label_w = len(label) * STAT_CHAR_W
+    scroll_x = label_w + STAT_LABEL_PAD
+    canvas_w = 192 - scroll_x
+    content_w = len(content) * STAT_CHAR_W
+    ml.show_text(0, 16, label_w, 16, "0FF", label, h_align="00", font=4)
+    ml.delete_canvas(STAT_SCROLL_CANVAS)
+    ml.create_canvas(STAT_SCROLL_CANVAS, scroll_x, 16, canvas_w, 16)
+    if content_w <= canvas_w:
+        # Fits — scroll in from right, hold in place for the rest of the cycle
         ml.create_txt_programe(
             STAT_SCROLL_CANVAS,
             "0FF",
             2,
-            3,
-            30,
+            5,
+            9999,
             2,
-            99,
+            1,
             content,
             h_align="00",
             font=4,
         )
     else:
-        # Short stat — render statically across the full row
-        ml.show_text(0, 16, 192, 16, "0FF", content, h_align="00", font=4)
+        # Overflow — continuous marquee (verified working via test_scroll_overflow.py)
+        ml.create_txt_programe(
+            STAT_SCROLL_CANVAS,
+            "0FF",
+            2,
+            5,
+            0,
+            2,
+            20,
+            content,
+            h_align="00",
+            font=4,
+        )
 
 
 def plane_animation(heading: int | None = None) -> None:
