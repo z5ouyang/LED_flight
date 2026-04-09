@@ -37,14 +37,15 @@ def main() -> None:
     ml.show_text(0, 0, 192, 16, "0F0", "TEST:", h_align="00", font=4)
 
     ml.create_canvas(TEST_CANVAS, 60, 16, 60, 16)
+    # Match the known-working flight labels animation: en=2 sp=5 du=0 ex=2 repeat=20
     ml.create_txt_programe(
         TEST_CANVAS,
         "0FF",
-        2,  # en: entry animation (scroll from right?)
-        3,  # sp: entry speed
-        30,  # du: hold duration after entry
-        2,  # ex: exit animation
-        99,  # repeat
+        2,  # en
+        5,  # sp
+        0,  # du
+        2,  # ex
+        20,  # repeat
         LONG_TEXT,
         h_align="00",
         font=4,
