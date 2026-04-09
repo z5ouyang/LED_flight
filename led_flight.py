@@ -41,7 +41,8 @@ SHORT_CANVAS = 1
 LONG_CANVAS = 2
 PLANE_CANVAS = 3
 STAT_SCROLL_CANVAS = 4
-STAT_LABEL_W = 80  # pixels reserved for pinned label on idle row 2
+STAT_CHAR_W = 13  # approx pixels per character at font 4
+STAT_LABEL_PAD = 3  # gap in pixels between label and scrolling content
 FLIP_EAST_WEST = False
 FLIGHTS_TODAY: set[str] = set()
 FLIGHTS_TODAY_DATE: str = ""
@@ -157,8 +158,13 @@ def display_date_time() -> None:
     ml.delete_programe(STAT_SCROLL_CANVAS)
     ml.clear_area(0, 16, 192, 16)
     if label:
-        # Pin label at left, scroll content in its own canvas to the right
-        ml.show_text(0, 16, STAT_LABEL_W, 16, "0FF", label, h_align="00", font=4)
+        # Recreate scroll canvas right after the current label's end so the
+        # content starts flush against the label instead of a fixed gap.
+        label_w = len(label) * STAT_CHAR_W
+        scroll_x = label_w + STAT_LABEL_PAD
+        ml.show_text(0, 16, label_w, 16, "0FF", label, h_align="00", font=4)
+        ml.delete_canvas(STAT_SCROLL_CANVAS)
+        ml.create_canvas(STAT_SCROLL_CANVAS, scroll_x, 16, 192 - scroll_x, 16)
         ml.create_txt_programe(
             STAT_SCROLL_CANVAS,
             "0FF",
@@ -239,6 +245,7 @@ def show_flight(flight_info: dict[str, Any]) -> None:
     logger.debug("%s %s", datetime.now(TZ), flight_info)
     ml.delete_programe(SHORT_CANVAS)
     ml.delete_programe(LONG_CANVAS)
+    ml.delete_programe(STAT_SCROLL_CANVAS)
     ml.clear_screen()
     plane_animation(int(flight_info["heading"]))
     labels_s = [
@@ -314,7 +321,10 @@ def init(config: dict[str, Any]) -> bool:
         ml.create_canvas(SHORT_CANVAS, 14, 0, 60, 16)
         ml.create_canvas(LONG_CANVAS, 0, 16, 192, 16)
         ml.create_canvas(PLANE_CANVAS, 0, 0, 192, 32)
-        ml.create_canvas(STAT_SCROLL_CANVAS, STAT_LABEL_W + 2, 16, 192 - STAT_LABEL_W - 2, 16)
+        # STAT_SCROLL_CANVAS is recreated per-stat with a width that depends
+        # on the label — this is just a placeholder so delete_canvas below
+        # has something to remove on the first invocation.
+        ml.create_canvas(STAT_SCROLL_CANVAS, 0, 16, 192, 16)
         FLIP_EAST_WEST = bool(config.get("flip_east_west"))
         ml.DEBUG_VERBOSE = DEBUG_VERBOSE
         if not check_wifi():
