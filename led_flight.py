@@ -41,8 +41,9 @@ SHORT_CANVAS = 1
 LONG_CANVAS = 2
 PLANE_CANVAS = 3
 STAT_SCROLL_CANVAS = 4
-STAT_CHAR_W = 10  # approx pixels per character at font 4 (measured)
+STAT_CHAR_W = 8  # approx pixels per character at font 4 (measured)
 STAT_LABEL_PAD = 3  # gap in pixels between label and scrolling content
+STAT_BOX_PAD = 12  # extra pixels on label box to avoid clipping the trailing colon
 FLIP_EAST_WEST = False
 FLIGHTS_TODAY: set[str] = set()
 FLIGHTS_TODAY_DATE: str = ""
@@ -157,11 +158,14 @@ def display_date_time() -> None:
     ml.delete_programe(LONG_CANVAS)
     ml.delete_programe(STAT_SCROLL_CANVAS)
     ml.clear_area(0, 16, 192, 16)
-    label_w = len(label) * STAT_CHAR_W
-    scroll_x = label_w + STAT_LABEL_PAD
+    # Tight estimate for where the label's last glyph ends — used to position
+    # the scroll canvas flush against the label.
+    label_end = len(label) * STAT_CHAR_W
+    scroll_x = label_end + STAT_LABEL_PAD
     canvas_w = 192 - scroll_x
     content_w = len(content) * STAT_CHAR_W
-    ml.show_text(0, 16, label_w, 16, "0FF", label, h_align="00", font=4)
+    # Generous box width so the trailing colon never gets clipped by show_text.
+    ml.show_text(0, 16, label_end + STAT_BOX_PAD, 16, "0FF", label, h_align="00", font=4)
     ml.delete_canvas(STAT_SCROLL_CANVAS)
     ml.create_canvas(STAT_SCROLL_CANVAS, scroll_x, 16, canvas_w, 16)
     if content_w <= canvas_w:
