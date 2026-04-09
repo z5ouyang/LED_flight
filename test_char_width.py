@@ -50,12 +50,15 @@ def main() -> None:
     ml.set_brightness(400)
     ml.set_text_color("FF0")
     # Remove any leftover programmes/canvases from a prior led_flight.py run
-    for wid in (1, 2, 3, 4):
+    for wid in range(16):
         ml.delete_programe(wid)
         ml.delete_canvas(wid)
     ml.clear_screen()
 
-    ml.show_text(0, 0, 192, 16, "0F0", "SMALL:", h_align="00", font=4)
+    # Every character used across the stat labels: uppercase letters that
+    # appear in any label, digit "1" (for "1ST"), space, and colon.
+    chars = "ABEFGHIKLMNOPRSTX 1:"
+    ml.show_text(0, 0, 192, 16, "0F0", chars, h_align="00", font=4)
 
     ml.set_paint_color("FFF")
     ml.show_image(0, 16, _build_ruler(192, 8))
