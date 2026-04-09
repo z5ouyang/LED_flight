@@ -148,54 +148,43 @@ def _save_flights_today() -> None:
         json.dump({"date": FLIGHTS_TODAY_DATE, "flights": list(FLIGHTS_TODAY)}, f)
 
 
+def _display_stat_row(label: str, content: str) -> None:
+    """Render the idle row 2 with a pinned label and scrolling content."""
+    # Tear down previous row 2 state BEFORE drawing the label — deleting
+    # the previous STAT_SCROLL_CANVAS can clear pixels in its old rectangle,
+    # which would eat the trailing letters of the new label if we did it
+    # after show_text.
+    ml.delete_programe(LONG_CANVAS)
+    ml.delete_programe(STAT_SCROLL_CANVAS)
+    ml.delete_canvas(STAT_SCROLL_CANVAS)
+    ml.clear_area(0, 16, 192, 16)
+    label_end = font4.pixel_width(label)
+    scroll_x = label_end + STAT_LABEL_PAD
+    canvas_w = 192 - scroll_x
+    content_w = font4.pixel_width(content)
+    # Full row width for the label box — show_text only draws glyph pixels,
+    # so an oversized box can never clip trailing characters.
+    ml.show_text(0, 16, 192, 16, "0FF", label, h_align="00", font=4)
+    ml.create_canvas(STAT_SCROLL_CANVAS, scroll_x, 16, canvas_w, 16)
+    if content_w <= canvas_w:
+        # Fits — scroll in from right, hold in place for the rest of the cycle
+        ml.create_txt_programe(
+            STAT_SCROLL_CANVAS, "0FF", 2, 5, 9999, 2, 1, content, h_align="00", font=4
+        )
+    else:
+        # Overflow — continuous marquee (verified via test_scroll_overflow.py)
+        ml.create_txt_programe(
+            STAT_SCROLL_CANVAS, "0FF", 2, 5, 0, 2, 20, content, h_align="00", font=4
+        )
+
+
 def display_date_time() -> None:
     dt = datetime.now(TZ)
     ml.show_text(0, 0, 64, 16, "FF0", f"{dt.strftime('%b')} {dt.day}", font=4)
     ml.show_text(64, 0, 64, 16, "FF0", dt.strftime("%H:%M"), font=4)
     ml.show_text(128, 0, 64, 16, "FF0", f"{len(FLIGHTS_TODAY)} flt", font=4)
     label, content = stats.format_stat_parts(stats.next_stat_index())
-    ml.delete_programe(LONG_CANVAS)
-    ml.delete_programe(STAT_SCROLL_CANVAS)
-    ml.clear_area(0, 16, 192, 16)
-    # Exact per-character rendered width so the scroll canvas can sit flush
-    # against the label regardless of which letters it contains.
-    label_end = font4.pixel_width(label)
-    scroll_x = label_end + STAT_LABEL_PAD
-    canvas_w = 192 - scroll_x
-    content_w = font4.pixel_width(content)
-    # Use the full row width as the label box — show_text only draws glyph
-    # pixels, so an oversized box can never clip trailing characters.
-    ml.show_text(0, 16, 192, 16, "0FF", label, h_align="00", font=4)
-    ml.delete_canvas(STAT_SCROLL_CANVAS)
-    ml.create_canvas(STAT_SCROLL_CANVAS, scroll_x, 16, canvas_w, 16)
-    if content_w <= canvas_w:
-        # Fits — scroll in from right, hold in place for the rest of the cycle
-        ml.create_txt_programe(
-            STAT_SCROLL_CANVAS,
-            "0FF",
-            2,
-            5,
-            9999,
-            2,
-            1,
-            content,
-            h_align="00",
-            font=4,
-        )
-    else:
-        # Overflow — continuous marquee (verified working via test_scroll_overflow.py)
-        ml.create_txt_programe(
-            STAT_SCROLL_CANVAS,
-            "0FF",
-            2,
-            5,
-            0,
-            2,
-            20,
-            content,
-            h_align="00",
-            font=4,
-        )
+    _display_stat_row(label, content)
 
 
 def plane_animation(heading: int | None = None) -> None:
