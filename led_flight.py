@@ -20,6 +20,7 @@ import requests
 import brightness
 import daily_stats as stats
 import display_helpers as dh
+import font4
 import kdnode as kd
 import modbus_led as ml
 import plane_icon as pi
@@ -41,9 +42,7 @@ SHORT_CANVAS = 1
 LONG_CANVAS = 2
 PLANE_CANVAS = 3
 STAT_SCROLL_CANVAS = 4
-STAT_CHAR_W = 8  # approx pixels per character at font 4 (measured)
 STAT_LABEL_PAD = 3  # gap in pixels between label and scrolling content
-STAT_BOX_PAD = 12  # extra pixels on label box to avoid clipping the trailing colon
 FLIP_EAST_WEST = False
 FLIGHTS_TODAY: set[str] = set()
 FLIGHTS_TODAY_DATE: str = ""
@@ -158,14 +157,15 @@ def display_date_time() -> None:
     ml.delete_programe(LONG_CANVAS)
     ml.delete_programe(STAT_SCROLL_CANVAS)
     ml.clear_area(0, 16, 192, 16)
-    # Tight estimate for where the label's last glyph ends — used to position
-    # the scroll canvas flush against the label.
-    label_end = len(label) * STAT_CHAR_W
+    # Exact per-character rendered width so the scroll canvas can sit flush
+    # against the label regardless of which letters it contains.
+    label_end = font4.pixel_width(label)
     scroll_x = label_end + STAT_LABEL_PAD
     canvas_w = 192 - scroll_x
-    content_w = len(content) * STAT_CHAR_W
-    # Generous box width so the trailing colon never gets clipped by show_text.
-    ml.show_text(0, 16, label_end + STAT_BOX_PAD, 16, "0FF", label, h_align="00", font=4)
+    content_w = font4.pixel_width(content)
+    # Use the full row width as the label box — show_text only draws glyph
+    # pixels, so an oversized box can never clip trailing characters.
+    ml.show_text(0, 16, 192, 16, "0FF", label, h_align="00", font=4)
     ml.delete_canvas(STAT_SCROLL_CANVAS)
     ml.create_canvas(STAT_SCROLL_CANVAS, scroll_x, 16, canvas_w, 16)
     if content_w <= canvas_w:
