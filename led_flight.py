@@ -200,12 +200,12 @@ def plane_animation(heading: int | None = None) -> None:
 
 DIR_X = 0
 DIR_Y = 2
-VDIR_X = 164
+VDIR_X = 180
 VDIR_Y = 0
-VDIR_W = 22
-VDIR_H = 16
+VDIR_W = 12
+VDIR_H = 12
 TEXT_X = 76
-TEXT_RIGHT = 162
+TEXT_RIGHT = 178
 
 
 def display_alt_sp(fInfo: dict[str, Any]) -> None:
