@@ -3,6 +3,7 @@ name = "led-flight"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "cloudscraper",
     "pyyaml",
     "requests",
     "pyserial",
@@ -27,6 +28,10 @@ exclude = ["code\\.py$", "plane_icon\\.py$", "lib/"]
 [[tool.mypy.overrides]]
 module = ["plane_icon"]
 follow_imports = "skip"
+
+[[tool.mypy.overrides]]
+module = ["cloudscraper"]
+ignore_missing_imports = true
 
 [tool.commitizen]
 name = "cz_conventional_commits"

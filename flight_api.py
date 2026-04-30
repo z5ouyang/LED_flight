@@ -8,6 +8,7 @@ import types
 from collections.abc import Sequence
 from typing import Any
 
+import cloudscraper
 import requests as requests_lib
 
 from flight_region import (
@@ -28,11 +29,9 @@ FLIGHT_SEARCH_TAIL = (
 )
 FLIGHT_LONG_DETAILS_HEAD = "https://data-live.flightradar24.com/clickhandler/?flight="
 HTTP_HEADERS = {
-    "User-Agent": "Mozilla/5.0",
     "cache-control": ("no-store, no-cache, must-revalidate," " post-check=0, pre-check=0"),
-    "accept": "application/json",
 }
-_session = requests_lib.Session()
+_session = cloudscraper.create_scraper()
 _session.headers.update(HTTP_HEADERS)
 FLIGHT_SHORT_KEYS = [
     "ICAO_aircraft",
