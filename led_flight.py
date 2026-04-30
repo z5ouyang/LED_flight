@@ -356,6 +356,7 @@ def _follow_previous_flight(
 def _handle_flight_change(
     findex: str | None,
     findex_old: str | None,
+    fshort: dict[str, Any] | None,
 ) -> int:
     if findex is None:
         assert findex_old is not None
@@ -363,6 +364,8 @@ def _handle_flight_change(
         display_date_time()
         return ut.WAIT_TIME
     finfo = ut.get_flight_detail(requests, findex, DEBUG_VERBOSE=DEBUG_VERBOSE)
+    if finfo is None and fshort is not None:
+        finfo = ut.build_flight_info_from_short(findex, fshort)
     if finfo is not None:
         stats.record_flight(finfo)
         show_flight(finfo)
@@ -384,7 +387,7 @@ def _resolve_flight(
         if findex is not None:
             FLIGHTS_TODAY.add(findex)
             _save_flights_today()
-        wait_time = _handle_flight_change(findex, findex_old)
+        wait_time = _handle_flight_change(findex, findex_old, fshort)
         return findex, fshort, findex, ut.MAX_FOLLOW_PLAN, wait_time
     if findex is not None and fshort is not None:
         display_alt_sp(fshort)

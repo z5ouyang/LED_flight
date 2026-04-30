@@ -269,6 +269,45 @@ def _build_flight_details(
     }
 
 
+def _vdir_from_vertical_speed(vs_raw: Any) -> int:
+    try:
+        vs = int(vs_raw)
+    except (ValueError, TypeError):
+        return 0
+    if vs > 64:
+        return 1
+    if vs < -64:
+        return -1
+    return 0
+
+
+def build_flight_info_from_short(
+    findex: str,
+    fshort: dict[str, Any],
+) -> dict[str, Any]:
+    """Build flight_info from search data when the detail API is unavailable."""
+    fn = fshort.get("flight_number", "") or fshort.get("callsign", "") or "-"
+    ori = fshort.get("ori", "")
+    dest = fshort.get("dest", "")
+    ac = fshort.get("aircraft_type", "") or "-"
+    airports = f"{ori}-{dest}" if ori and dest else (ori or dest or "-")
+    return {
+        "flight_index": findex,
+        "flight_number": fn,
+        "airline_name": "",
+        "airports_short": airports,
+        "airports_long": airports,
+        "aircraft_code": ac,
+        "aircraft_model": ac,
+        "heading": fshort.get("heading", 270),
+        "altitude": fshort.get("altitude", 0),
+        "speed": fshort.get("speed", 0),
+        "initial_vdir": _vdir_from_vertical_speed(fshort.get("vertical_speed", 0)),
+        "ori": ori,
+        "dest": dest,
+    }
+
+
 def get_flight_detail(
     requests: types.ModuleType,
     flight_index: str,
